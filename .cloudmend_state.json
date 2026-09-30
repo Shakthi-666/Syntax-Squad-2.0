@@ -1,0 +1,4058 @@
+{
+  "runs": [
+    {
+      "run_id": "run-muohe20t",
+      "timestamp": "2026-09-30T19:11:25.760Z",
+      "scenario_name": "Self-Healing Recovery",
+      "mode": "self_healing",
+      "finding": {
+        "id": "FINDING-GATEWAY-01",
+        "resource": "Apex Medical Patient Portal Gateway",
+        "vulnerability": "Unauthenticated API Route Exposure",
+        "severity": "CRITICAL",
+        "evidence": "Perimeter gateway route /api/records has allow_anonymous=true. Anonymous requests retrieve patient diagnosis data.",
+        "affected_endpoint": "/api/records",
+        "current_configuration": "{\n  \"path\": \"/api/records\",\n  \"allow_anonymous\": true,\n  \"required_roles\": []\n}",
+        "recommended_remediation": "Enforce Bearer authorization. Require analyst or admin roles for records endpoint; preserve /health for public monitoring.",
+        "security_impact": "Anonymous users bypass identity perimeter and query protected patient records.",
+        "rag_sources": [
+          {
+            "id": "CIS-GATEWAY-02",
+            "title": "Perimeter API Gateway Authentication Enforcement",
+            "excerpt": "Sensitive healthcare endpoints (/api/records) must never be publicly exposed. All incoming traffic must present cryptographically validated tokens."
+          },
+          {
+            "id": "CLOUDMEND-PRIN-03",
+            "title": "Least Privilege vs Blanket Denial",
+            "excerpt": "Remediation must not deploy blanket deny rules on active endpoints, as this breaks legitimate business applications and causes service outages."
+          }
+        ]
+      },
+      "initial_config": {
+        "storage": {
+          "bucket": "cloudmend-private-records",
+          "public_read": false,
+          "authenticated_read": true,
+          "classification": "CONFIDENTIAL",
+          "allowed_principals": [
+            "role:analyst",
+            "role:admin"
+          ]
+        },
+        "gateway": {
+          "service": "Apex Medical Patient Portal Gateway",
+          "routes": [
+            {
+              "path": "/health",
+              "allow_anonymous": true,
+              "required_roles": []
+            },
+            {
+              "path": "/api/records",
+              "allow_anonymous": true,
+              "required_roles": []
+            },
+            {
+              "path": "/api/admin",
+              "allow_anonymous": false,
+              "required_roles": [
+                "admin"
+              ]
+            }
+          ]
+        },
+        "scenario_id": 3,
+        "scenario_name": "Self-Healing Recovery"
+      },
+      "candidate_config": {
+        "storage": {
+          "bucket": "cloudmend-private-records",
+          "public_read": false,
+          "authenticated_read": true,
+          "classification": "CONFIDENTIAL",
+          "allowed_principals": [
+            "role:analyst",
+            "role:admin"
+          ]
+        },
+        "gateway": {
+          "service": "Apex Medical Patient Portal Gateway",
+          "routes": [
+            {
+              "path": "/health",
+              "allow_anonymous": true,
+              "required_roles": []
+            },
+            {
+              "path": "/api/records",
+              "allow_anonymous": false,
+              "required_roles": [],
+              "block_all": true
+            },
+            {
+              "path": "/api/admin",
+              "allow_anonymous": false,
+              "required_roles": [
+                "admin"
+              ]
+            }
+          ]
+        },
+        "scenario_id": 3,
+        "scenario_name": "Self-Healing Recovery"
+      },
+      "final_config": {
+        "storage": {
+          "bucket": "cloudmend-private-records",
+          "public_read": false,
+          "authenticated_read": true,
+          "classification": "CONFIDENTIAL",
+          "allowed_principals": [
+            "role:analyst",
+            "role:admin"
+          ]
+        },
+        "gateway": {
+          "service": "Apex Medical Patient Portal Gateway",
+          "routes": [
+            {
+              "path": "/health",
+              "allow_anonymous": true,
+              "required_roles": []
+            },
+            {
+              "path": "/api/records",
+              "allow_anonymous": false,
+              "required_roles": [
+                "analyst",
+                "admin"
+              ],
+              "block_all": false
+            },
+            {
+              "path": "/api/admin",
+              "allow_anonymous": false,
+              "required_roles": [
+                "admin"
+              ]
+            }
+          ]
+        },
+        "scenario_id": 3,
+        "scenario_name": "Self-Healing Recovery"
+      },
+      "snapshots": [
+        {
+          "revision": "rev-002",
+          "hash": "sha256:6910e44e40c9f79d",
+          "timestamp": "2026-09-30T19:11:18.800Z",
+          "run_id": "run-muohe20t",
+          "description": "Pre-remediation baseline snapshot",
+          "config": {
+            "storage": {
+              "bucket": "cloudmend-private-records",
+              "public_read": false,
+              "authenticated_read": true,
+              "classification": "CONFIDENTIAL",
+              "allowed_principals": [
+                "role:analyst",
+                "role:admin"
+              ]
+            },
+            "gateway": {
+              "service": "Apex Medical Patient Portal Gateway",
+              "routes": [
+                {
+                  "path": "/health",
+                  "allow_anonymous": true,
+                  "required_roles": []
+                },
+                {
+                  "path": "/api/records",
+                  "allow_anonymous": true,
+                  "required_roles": []
+                },
+                {
+                  "path": "/api/admin",
+                  "allow_anonymous": false,
+                  "required_roles": [
+                    "admin"
+                  ]
+                }
+              ]
+            },
+            "scenario_id": 3,
+            "scenario_name": "Self-Healing Recovery"
+          }
+        }
+      ],
+      "remediation_attempts": 2,
+      "verification_results": [
+        {
+          "id": "PROBE-SEC-01",
+          "category": "SECURITY",
+          "name": "Anonymous Access to /api/records",
+          "target": "/api/records",
+          "identity": "Anonymous",
+          "expected_status": "401 or 403",
+          "actual_status": 401,
+          "latency_ms": 8,
+          "passed": true,
+          "details": "Anonymous request correctly rejected with HTTP 401"
+        },
+        {
+          "id": "PROBE-SEC-02",
+          "category": "SECURITY",
+          "name": "Anonymous RustFS S3 Bucket Access",
+          "target": "s3://cloudmend-private-records/patient-records/*",
+          "identity": "Anonymous",
+          "expected_status": 403,
+          "actual_status": 403,
+          "latency_ms": 12,
+          "passed": true,
+          "details": "Bucket rejected anonymous read request with 403 Forbidden."
+        },
+        {
+          "id": "PROBE-SEC-03",
+          "category": "SECURITY",
+          "name": "Invalid Token Access to /api/records",
+          "target": "/api/records",
+          "identity": "Invalid Token",
+          "expected_status": 401,
+          "actual_status": 401,
+          "latency_ms": 10,
+          "passed": true,
+          "details": "Invalid token rejected with 401 Unauthorized."
+        },
+        {
+          "id": "PROBE-APP-01",
+          "category": "APPLICATION",
+          "name": "Public Health Check (/health)",
+          "target": "/health",
+          "identity": "Anonymous",
+          "expected_status": 200,
+          "actual_status": 200,
+          "latency_ms": 6,
+          "passed": true,
+          "details": "Health probe healthy (HTTP 200 OK)."
+        },
+        {
+          "id": "PROBE-APP-02",
+          "category": "APPLICATION",
+          "name": "Authorized Analyst Access to /api/records",
+          "target": "/api/records",
+          "identity": "Security Analyst",
+          "expected_status": 200,
+          "actual_status": 200,
+          "latency_ms": 14,
+          "passed": true,
+          "details": "Authorized Analyst successfully authenticated and retrieved medical charts (HTTP 200)."
+        },
+        {
+          "id": "PROBE-APP-03",
+          "category": "APPLICATION",
+          "name": "Administrator Access to /api/admin",
+          "target": "/api/admin",
+          "identity": "Administrator",
+          "expected_status": 200,
+          "actual_status": 200,
+          "latency_ms": 11,
+          "passed": true,
+          "details": "Administrator role verified for /api/admin (HTTP 200)."
+        },
+        {
+          "id": "PROBE-APP-04",
+          "category": "APPLICATION",
+          "name": "Role-Based Access Control Isolation",
+          "target": "/api/admin",
+          "identity": "Security Analyst",
+          "expected_status": 403,
+          "actual_status": 403,
+          "latency_ms": 9,
+          "passed": true,
+          "details": "Least privilege RBAC properly enforced: Analyst cannot access Admin control plane (HTTP 403)."
+        }
+      ],
+      "rollback_occurred": true,
+      "rollback_reason": "Candidate policy closed security exposure but broke legitimate Security Analyst workflow (HTTP 403 on /api/records).",
+      "final_outcome": "SUCCESS",
+      "elapsed_ms": 8067,
+      "model_used": "Gemini 3.8 Flash",
+      "events": [
+        {
+          "id": "evt-1790795477693-gcjsp",
+          "run_id": "run-muohe20t",
+          "timestamp": "2026-09-30T19:11:17.693Z",
+          "category": "SCAN",
+          "title": "Scanning Infrastructure Configuration",
+          "description": "Inspecting perimeter gateway routes and RustFS object storage permissions...",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795478195-4bhaq",
+          "run_id": "run-muohe20t",
+          "timestamp": "2026-09-30T19:11:18.195Z",
+          "category": "EVIDENCE",
+          "title": "Critical Finding Identified: Unauthenticated API Route Exposure",
+          "description": "Perimeter gateway route /api/records has allow_anonymous=true. Anonymous requests retrieve patient diagnosis data.",
+          "level": "error"
+        },
+        {
+          "id": "evt-1790795478196-ycmhb",
+          "run_id": "run-muohe20t",
+          "timestamp": "2026-09-30T19:11:18.196Z",
+          "category": "RAG",
+          "title": "Retrieved Guidance: Perimeter API Gateway Authentication Enforcement",
+          "description": "Configure gateway authorizers to require valid JWT/Bearer credentials. Return HTTP 401 Unauthorized for missing tokens.",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795478798-elrpf",
+          "run_id": "run-muohe20t",
+          "timestamp": "2026-09-30T19:11:18.798Z",
+          "category": "PLAN",
+          "title": "Agent Formulation of Remediation Plan",
+          "description": "Agent preparing candidate policy. Testing perimeter access restriction on Apex Medical gateway.",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795478800-uv5uv",
+          "run_id": "run-muohe20t",
+          "timestamp": "2026-09-30T19:11:18.800Z",
+          "category": "SNAPSHOT",
+          "title": "Captured Immutable Baseline Snapshot (rev-002)",
+          "description": "State hash: sha256:6910e44e40c9f79d. Registered rollback target prior to mutation.",
+          "level": "info",
+          "metadata": {
+            "revision": "rev-002",
+            "hash": "sha256:6910e44e40c9f79d"
+          }
+        },
+        {
+          "id": "evt-1790795479302-b8lre",
+          "run_id": "run-muohe20t",
+          "timestamp": "2026-09-30T19:11:19.302Z",
+          "category": "MUTATION",
+          "title": "Applying Candidate Policy 1: Blanket Route Restriction",
+          "description": "Enforcing emergency perimeter deny rule on /api/records to immediately seal exposure.",
+          "level": "warning"
+        },
+        {
+          "id": "evt-1790795480004-pdmsi",
+          "run_id": "run-muohe20t",
+          "timestamp": "2026-09-30T19:11:20.004Z",
+          "category": "PROBE",
+          "title": "Executing Dual Verification Protocol (Candidate 1)",
+          "description": "Running independent Security attack probes and Application workflow probes concurrently...",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795480706-7m6vy",
+          "run_id": "run-muohe20t",
+          "timestamp": "2026-09-30T19:11:20.706Z",
+          "category": "PROBE",
+          "title": "Security Probe Result: PASS (Anonymous Blocked)",
+          "description": "Anonymous caller received HTTP 403 Forbidden. Attack vector is closed.",
+          "level": "success"
+        },
+        {
+          "id": "evt-1790795480707-4yna2",
+          "run_id": "run-muohe20t",
+          "timestamp": "2026-09-30T19:11:20.707Z",
+          "category": "PROBE",
+          "title": "Application Probe Result: FAIL (Analyst Blocked)",
+          "description": "CRITICAL: Legitimate Security Analyst was blocked with HTTP 403! Clinical records workflow broken.",
+          "level": "error"
+        },
+        {
+          "id": "evt-1790795480708-q3oia",
+          "run_id": "run-muohe20t",
+          "timestamp": "2026-09-30T19:11:20.708Z",
+          "category": "REGRESSION",
+          "title": "Application Workflow Regression Detected!",
+          "description": "Candidate policy closed security exposure but broke legitimate Security Analyst workflow (HTTP 403 on /api/records).",
+          "level": "error"
+        },
+        {
+          "id": "evt-1790795481510-giehn",
+          "run_id": "run-muohe20t",
+          "timestamp": "2026-09-30T19:11:21.510Z",
+          "category": "ROLLBACK",
+          "title": "Triggering Automated Rollback to Snapshot rev-002",
+          "description": "Restoring baseline configuration hash sha256:6910e44e40c9f79d...",
+          "level": "warning"
+        },
+        {
+          "id": "evt-1790795482948-mkq2v",
+          "run_id": "run-muohe20t",
+          "timestamp": "2026-09-30T19:11:22.948Z",
+          "category": "REFLECTION",
+          "title": "Agent Reflection & Root Cause Analysis",
+          "description": "Candidate policy was overly restrictive: blanket denial on /api/records severed authorized analyst access. Replanning with fine-grained role-based authorizer granting analyst and admin identities while rejecting anonymous requests.",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795483752-vd6rd",
+          "run_id": "run-muohe20t",
+          "timestamp": "2026-09-30T19:11:23.752Z",
+          "category": "REPLAN",
+          "title": "Synthesizing Least-Privilege Policy (Candidate 2)",
+          "description": "Configuring gateway authorizer: allow_anonymous=false, required_roles=[\"analyst\", \"admin\"]. Preserving /health for anonymous uptime checks.",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795484354-kkyjg",
+          "run_id": "run-muohe20t",
+          "timestamp": "2026-09-30T19:11:24.354Z",
+          "category": "MUTATION",
+          "title": "Applying Safer Least-Privilege Configuration",
+          "description": "Deploying calibrated route authorization rules to perimeter gateway...",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795485056-491hr",
+          "run_id": "run-muohe20t",
+          "timestamp": "2026-09-30T19:11:25.056Z",
+          "category": "PROBE",
+          "title": "Final Dual Verification Protocol",
+          "description": "Running comprehensive suite of Security Attack probes and Application Health probes...",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795485759-cvjoj",
+          "run_id": "run-muohe20t",
+          "timestamp": "2026-09-30T19:11:25.759Z",
+          "category": "OUTCOME",
+          "title": "Self-Healing Remediation Successful",
+          "description": "Data protected from anonymous access + application workflow verified intact for authorized analysts.",
+          "level": "success",
+          "metadata": {
+            "attempts": 2,
+            "rollback_occurred": true
+          }
+        }
+      ],
+      "diff": {
+        "before_json": "{\n  \"storage\": {\n    \"bucket\": \"cloudmend-private-records\",\n    \"public_read\": false,\n    \"authenticated_read\": true,\n    \"classification\": \"CONFIDENTIAL\",\n    \"allowed_principals\": [\n      \"role:analyst\",\n      \"role:admin\"\n    ]\n  },\n  \"gateway\": {\n    \"service\": \"Apex Medical Patient Portal Gateway\",\n    \"routes\": [\n      {\n        \"path\": \"/health\",\n        \"allow_anonymous\": true,\n        \"required_roles\": []\n      },\n      {\n        \"path\": \"/api/records\",\n        \"allow_anonymous\": true,\n        \"required_roles\": []\n      },\n      {\n        \"path\": \"/api/admin\",\n        \"allow_anonymous\": false,\n        \"required_roles\": [\n          \"admin\"\n        ]\n      }\n    ]\n  },\n  \"scenario_id\": 3,\n  \"scenario_name\": \"Self-Healing Recovery\"\n}",
+        "after_json": "{\n  \"storage\": {\n    \"bucket\": \"cloudmend-private-records\",\n    \"public_read\": false,\n    \"authenticated_read\": true,\n    \"classification\": \"CONFIDENTIAL\",\n    \"allowed_principals\": [\n      \"role:analyst\",\n      \"role:admin\"\n    ]\n  },\n  \"gateway\": {\n    \"service\": \"Apex Medical Patient Portal Gateway\",\n    \"routes\": [\n      {\n        \"path\": \"/health\",\n        \"allow_anonymous\": true,\n        \"required_roles\": []\n      },\n      {\n        \"path\": \"/api/records\",\n        \"allow_anonymous\": false,\n        \"required_roles\": [\n          \"analyst\",\n          \"admin\"\n        ],\n        \"block_all\": false\n      },\n      {\n        \"path\": \"/api/admin\",\n        \"allow_anonymous\": false,\n        \"required_roles\": [\n          \"admin\"\n        ]\n      }\n    ]\n  },\n  \"scenario_id\": 3,\n  \"scenario_name\": \"Self-Healing Recovery\"\n}"
+      }
+    },
+    {
+      "run_id": "run-muohdzma",
+      "timestamp": "2026-09-30T19:11:17.691Z",
+      "scenario_name": "Storage Bucket Public Access",
+      "mode": "standard",
+      "finding": {
+        "id": "FINDING-STORAGE-02",
+        "resource": "cloudmend-private-records (RustFS)",
+        "vulnerability": "Publicly Accessible Storage Bucket",
+        "severity": "CRITICAL",
+        "evidence": "Sensitive synthetic records are accessible without authentication because the storage policy allows public read access (public_read: true).",
+        "affected_endpoint": "s3://cloudmend-private-records/patient-records/*",
+        "current_configuration": "{\n  \"bucket\": \"cloudmend-private-records\",\n  \"public_read\": true,\n  \"authenticated_read\": true,\n  \"classification\": \"CONFIDENTIAL\",\n  \"allowed_principals\": [\n    \"role:analyst\",\n    \"role:admin\",\n    \"public\"\n  ]\n}",
+        "recommended_remediation": "Remove anonymous read access (public_read: false) while preserving authenticated application and analyst access.",
+        "security_impact": "Unauthorized external threat actors can enumerate and download patient medical history without audit trail.",
+        "rag_sources": [
+          {
+            "id": "CIS-STORAGE-01",
+            "title": "S3 / RustFS Bucket Public Access Block",
+            "excerpt": "Private and confidential patient data buckets must have public read/write access explicitly denied at all times."
+          },
+          {
+            "id": "CIS-GATEWAY-02",
+            "title": "Perimeter API Gateway Authentication Enforcement",
+            "excerpt": "Sensitive healthcare endpoints (/api/records) must never be publicly exposed. All incoming traffic must present cryptographically validated tokens."
+          }
+        ]
+      },
+      "initial_config": {
+        "storage": {
+          "bucket": "cloudmend-private-records",
+          "public_read": true,
+          "authenticated_read": true,
+          "classification": "CONFIDENTIAL",
+          "allowed_principals": [
+            "role:analyst",
+            "role:admin",
+            "public"
+          ]
+        },
+        "gateway": {
+          "service": "Apex Medical Patient Portal Gateway",
+          "routes": [
+            {
+              "path": "/health",
+              "allow_anonymous": true,
+              "required_roles": []
+            },
+            {
+              "path": "/api/records",
+              "allow_anonymous": false,
+              "required_roles": [
+                "analyst",
+                "admin"
+              ]
+            },
+            {
+              "path": "/api/admin",
+              "allow_anonymous": false,
+              "required_roles": [
+                "admin"
+              ]
+            }
+          ]
+        },
+        "scenario_id": 2,
+        "scenario_name": "Storage Bucket Public Access"
+      },
+      "final_config": {
+        "storage": {
+          "bucket": "cloudmend-private-records",
+          "public_read": false,
+          "authenticated_read": true,
+          "classification": "CONFIDENTIAL",
+          "allowed_principals": [
+            "role:analyst",
+            "role:admin"
+          ]
+        },
+        "gateway": {
+          "service": "Apex Medical Patient Portal Gateway",
+          "routes": [
+            {
+              "path": "/health",
+              "allow_anonymous": true,
+              "required_roles": []
+            },
+            {
+              "path": "/api/records",
+              "allow_anonymous": false,
+              "required_roles": [
+                "analyst",
+                "admin"
+              ]
+            },
+            {
+              "path": "/api/admin",
+              "allow_anonymous": false,
+              "required_roles": [
+                "admin"
+              ]
+            }
+          ]
+        },
+        "scenario_id": 2,
+        "scenario_name": "Storage Bucket Public Access"
+      },
+      "snapshots": [
+        {
+          "revision": "rev-001",
+          "hash": "sha256:fc2f395bedc68029",
+          "timestamp": "2026-09-30T19:11:15.685Z",
+          "run_id": "run-muohdzma",
+          "description": "Pre-remediation baseline snapshot",
+          "config": {
+            "storage": {
+              "bucket": "cloudmend-private-records",
+              "public_read": true,
+              "authenticated_read": true,
+              "classification": "CONFIDENTIAL",
+              "allowed_principals": [
+                "role:analyst",
+                "role:admin",
+                "public"
+              ]
+            },
+            "gateway": {
+              "service": "Apex Medical Patient Portal Gateway",
+              "routes": [
+                {
+                  "path": "/health",
+                  "allow_anonymous": true,
+                  "required_roles": []
+                },
+                {
+                  "path": "/api/records",
+                  "allow_anonymous": false,
+                  "required_roles": [
+                    "analyst",
+                    "admin"
+                  ]
+                },
+                {
+                  "path": "/api/admin",
+                  "allow_anonymous": false,
+                  "required_roles": [
+                    "admin"
+                  ]
+                }
+              ]
+            },
+            "scenario_id": 2,
+            "scenario_name": "Storage Bucket Public Access"
+          }
+        }
+      ],
+      "remediation_attempts": 1,
+      "verification_results": [
+        {
+          "id": "PROBE-SEC-01",
+          "category": "SECURITY",
+          "name": "Anonymous Access to /api/records",
+          "target": "/api/records",
+          "identity": "Anonymous",
+          "expected_status": "401 or 403",
+          "actual_status": 401,
+          "latency_ms": 8,
+          "passed": true,
+          "details": "Anonymous request correctly rejected with HTTP 401"
+        },
+        {
+          "id": "PROBE-SEC-02",
+          "category": "SECURITY",
+          "name": "Anonymous RustFS S3 Bucket Access",
+          "target": "s3://cloudmend-private-records/patient-records/*",
+          "identity": "Anonymous",
+          "expected_status": 403,
+          "actual_status": 403,
+          "latency_ms": 12,
+          "passed": true,
+          "details": "Bucket rejected anonymous read request with 403 Forbidden."
+        },
+        {
+          "id": "PROBE-SEC-03",
+          "category": "SECURITY",
+          "name": "Invalid Token Access to /api/records",
+          "target": "/api/records",
+          "identity": "Invalid Token",
+          "expected_status": 401,
+          "actual_status": 401,
+          "latency_ms": 10,
+          "passed": true,
+          "details": "Invalid token rejected with 401 Unauthorized."
+        },
+        {
+          "id": "PROBE-APP-01",
+          "category": "APPLICATION",
+          "name": "Public Health Check (/health)",
+          "target": "/health",
+          "identity": "Anonymous",
+          "expected_status": 200,
+          "actual_status": 200,
+          "latency_ms": 6,
+          "passed": true,
+          "details": "Health probe healthy (HTTP 200 OK)."
+        },
+        {
+          "id": "PROBE-APP-02",
+          "category": "APPLICATION",
+          "name": "Authorized Analyst Access to /api/records",
+          "target": "/api/records",
+          "identity": "Security Analyst",
+          "expected_status": 200,
+          "actual_status": 200,
+          "latency_ms": 14,
+          "passed": true,
+          "details": "Authorized Analyst successfully authenticated and retrieved medical charts (HTTP 200)."
+        },
+        {
+          "id": "PROBE-APP-03",
+          "category": "APPLICATION",
+          "name": "Administrator Access to /api/admin",
+          "target": "/api/admin",
+          "identity": "Administrator",
+          "expected_status": 200,
+          "actual_status": 200,
+          "latency_ms": 11,
+          "passed": true,
+          "details": "Administrator role verified for /api/admin (HTTP 200)."
+        },
+        {
+          "id": "PROBE-APP-04",
+          "category": "APPLICATION",
+          "name": "Role-Based Access Control Isolation",
+          "target": "/api/admin",
+          "identity": "Security Analyst",
+          "expected_status": 403,
+          "actual_status": 403,
+          "latency_ms": 9,
+          "passed": true,
+          "details": "Least privilege RBAC properly enforced: Analyst cannot access Admin control plane (HTTP 403)."
+        }
+      ],
+      "rollback_occurred": false,
+      "final_outcome": "SUCCESS",
+      "elapsed_ms": 3113,
+      "model_used": "Gemini 3.8 Flash",
+      "events": [
+        {
+          "id": "evt-1790795474578-krzrw",
+          "run_id": "run-muohdzma",
+          "timestamp": "2026-09-30T19:11:14.578Z",
+          "category": "SCAN",
+          "title": "Scanning Infrastructure Configuration",
+          "description": "Inspecting perimeter gateway routes and RustFS object storage permissions...",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795475082-elsju",
+          "run_id": "run-muohdzma",
+          "timestamp": "2026-09-30T19:11:15.082Z",
+          "category": "EVIDENCE",
+          "title": "Critical Finding Identified: Publicly Accessible Storage Bucket",
+          "description": "Sensitive synthetic records are accessible without authentication because the storage policy allows public read access (public_read: true).",
+          "level": "error"
+        },
+        {
+          "id": "evt-1790795475083-9x4xr",
+          "run_id": "run-muohdzma",
+          "timestamp": "2026-09-30T19:11:15.083Z",
+          "category": "RAG",
+          "title": "Retrieved Guidance: S3 / RustFS Bucket Public Access Block",
+          "description": "Remove anonymous Read/List permissions from bucket policies. Require authenticated service principals with explicit IAM roles.",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795475684-1i4y6",
+          "run_id": "run-muohdzma",
+          "timestamp": "2026-09-30T19:11:15.684Z",
+          "category": "PLAN",
+          "title": "Agent Formulation of Remediation Plan",
+          "description": "Agent formulating least-privilege policy to restrict public access while retaining authorized service principals.",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795475685-apu8s",
+          "run_id": "run-muohdzma",
+          "timestamp": "2026-09-30T19:11:15.685Z",
+          "category": "SNAPSHOT",
+          "title": "Captured Immutable Baseline Snapshot (rev-001)",
+          "description": "State hash: sha256:fc2f395bedc68029. Registered rollback target prior to mutation.",
+          "level": "info",
+          "metadata": {
+            "revision": "rev-001",
+            "hash": "sha256:fc2f395bedc68029"
+          }
+        },
+        {
+          "id": "evt-1790795476186-148p2",
+          "run_id": "run-muohdzma",
+          "timestamp": "2026-09-30T19:11:16.186Z",
+          "category": "MUTATION",
+          "title": "Applying Storage Bucket Access Policy",
+          "description": "Setting public_read: false on RustFS bucket cloudmend-private-records while maintaining authenticated read for authorized principals.",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795476988-gxutv",
+          "run_id": "run-muohdzma",
+          "timestamp": "2026-09-30T19:11:16.988Z",
+          "category": "PROBE",
+          "title": "Final Dual Verification Protocol",
+          "description": "Running comprehensive suite of Security Attack probes and Application Health probes...",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795477690-1akh5",
+          "run_id": "run-muohdzma",
+          "timestamp": "2026-09-30T19:11:17.690Z",
+          "category": "OUTCOME",
+          "title": "Remediation Verified Successful",
+          "description": "Data protected from anonymous access + application workflow verified intact for authorized analysts.",
+          "level": "success",
+          "metadata": {
+            "attempts": 1,
+            "rollback_occurred": false
+          }
+        }
+      ],
+      "diff": {
+        "before_json": "{\n  \"storage\": {\n    \"bucket\": \"cloudmend-private-records\",\n    \"public_read\": true,\n    \"authenticated_read\": true,\n    \"classification\": \"CONFIDENTIAL\",\n    \"allowed_principals\": [\n      \"role:analyst\",\n      \"role:admin\",\n      \"public\"\n    ]\n  },\n  \"gateway\": {\n    \"service\": \"Apex Medical Patient Portal Gateway\",\n    \"routes\": [\n      {\n        \"path\": \"/health\",\n        \"allow_anonymous\": true,\n        \"required_roles\": []\n      },\n      {\n        \"path\": \"/api/records\",\n        \"allow_anonymous\": false,\n        \"required_roles\": [\n          \"analyst\",\n          \"admin\"\n        ]\n      },\n      {\n        \"path\": \"/api/admin\",\n        \"allow_anonymous\": false,\n        \"required_roles\": [\n          \"admin\"\n        ]\n      }\n    ]\n  },\n  \"scenario_id\": 2,\n  \"scenario_name\": \"Storage Bucket Public Access\"\n}",
+        "after_json": "{\n  \"storage\": {\n    \"bucket\": \"cloudmend-private-records\",\n    \"public_read\": false,\n    \"authenticated_read\": true,\n    \"classification\": \"CONFIDENTIAL\",\n    \"allowed_principals\": [\n      \"role:analyst\",\n      \"role:admin\"\n    ]\n  },\n  \"gateway\": {\n    \"service\": \"Apex Medical Patient Portal Gateway\",\n    \"routes\": [\n      {\n        \"path\": \"/health\",\n        \"allow_anonymous\": true,\n        \"required_roles\": []\n      },\n      {\n        \"path\": \"/api/records\",\n        \"allow_anonymous\": false,\n        \"required_roles\": [\n          \"analyst\",\n          \"admin\"\n        ]\n      },\n      {\n        \"path\": \"/api/admin\",\n        \"allow_anonymous\": false,\n        \"required_roles\": [\n          \"admin\"\n        ]\n      }\n    ]\n  },\n  \"scenario_id\": 2,\n  \"scenario_name\": \"Storage Bucket Public Access\"\n}"
+      }
+    },
+    {
+      "run_id": "run-muoh8c0k",
+      "timestamp": "2026-09-30T19:06:59.886Z",
+      "scenario_name": "Self-Healing Recovery",
+      "mode": "self_healing",
+      "finding": {
+        "id": "FINDING-GATEWAY-01",
+        "resource": "Apex Medical Patient Portal Gateway",
+        "vulnerability": "Unauthenticated API Route Exposure",
+        "severity": "CRITICAL",
+        "evidence": "Perimeter gateway route /api/records has allow_anonymous=true. Anonymous requests retrieve patient diagnosis data.",
+        "affected_endpoint": "/api/records",
+        "current_configuration": "{\n  \"path\": \"/api/records\",\n  \"allow_anonymous\": true,\n  \"required_roles\": []\n}",
+        "recommended_remediation": "Enforce Bearer authorization. Require analyst or admin roles for records endpoint; preserve /health for public monitoring.",
+        "security_impact": "Anonymous users bypass identity perimeter and query protected patient records.",
+        "rag_sources": [
+          {
+            "id": "CIS-GATEWAY-02",
+            "title": "Perimeter API Gateway Authentication Enforcement",
+            "excerpt": "Sensitive healthcare endpoints (/api/records) must never be publicly exposed. All incoming traffic must present cryptographically validated tokens."
+          },
+          {
+            "id": "CLOUDMEND-PRIN-03",
+            "title": "Least Privilege vs Blanket Denial",
+            "excerpt": "Remediation must not deploy blanket deny rules on active endpoints, as this breaks legitimate business applications and causes service outages."
+          }
+        ]
+      },
+      "initial_config": {
+        "storage": {
+          "bucket": "cloudmend-private-records",
+          "public_read": false,
+          "authenticated_read": true,
+          "classification": "CONFIDENTIAL",
+          "allowed_principals": [
+            "role:analyst",
+            "role:admin"
+          ]
+        },
+        "gateway": {
+          "service": "Apex Medical Patient Portal Gateway",
+          "routes": [
+            {
+              "path": "/health",
+              "allow_anonymous": true,
+              "required_roles": []
+            },
+            {
+              "path": "/api/records",
+              "allow_anonymous": true,
+              "required_roles": []
+            },
+            {
+              "path": "/api/admin",
+              "allow_anonymous": false,
+              "required_roles": [
+                "admin"
+              ]
+            }
+          ]
+        },
+        "scenario_id": 3,
+        "scenario_name": "Self-Healing Recovery"
+      },
+      "candidate_config": {
+        "storage": {
+          "bucket": "cloudmend-private-records",
+          "public_read": false,
+          "authenticated_read": true,
+          "classification": "CONFIDENTIAL",
+          "allowed_principals": [
+            "role:analyst",
+            "role:admin"
+          ]
+        },
+        "gateway": {
+          "service": "Apex Medical Patient Portal Gateway",
+          "routes": [
+            {
+              "path": "/health",
+              "allow_anonymous": true,
+              "required_roles": []
+            },
+            {
+              "path": "/api/records",
+              "allow_anonymous": false,
+              "required_roles": [],
+              "block_all": true
+            },
+            {
+              "path": "/api/admin",
+              "allow_anonymous": false,
+              "required_roles": [
+                "admin"
+              ]
+            }
+          ]
+        },
+        "scenario_id": 3,
+        "scenario_name": "Self-Healing Recovery"
+      },
+      "final_config": {
+        "storage": {
+          "bucket": "cloudmend-private-records",
+          "public_read": false,
+          "authenticated_read": true,
+          "classification": "CONFIDENTIAL",
+          "allowed_principals": [
+            "role:analyst",
+            "role:admin"
+          ]
+        },
+        "gateway": {
+          "service": "Apex Medical Patient Portal Gateway",
+          "routes": [
+            {
+              "path": "/health",
+              "allow_anonymous": true,
+              "required_roles": []
+            },
+            {
+              "path": "/api/records",
+              "allow_anonymous": false,
+              "required_roles": [
+                "analyst",
+                "admin"
+              ],
+              "block_all": false
+            },
+            {
+              "path": "/api/admin",
+              "allow_anonymous": false,
+              "required_roles": [
+                "admin"
+              ]
+            }
+          ]
+        },
+        "scenario_id": 3,
+        "scenario_name": "Self-Healing Recovery"
+      },
+      "snapshots": [
+        {
+          "revision": "rev-002",
+          "hash": "sha256:6910e44e40c9f79d",
+          "timestamp": "2026-09-30T19:06:51.813Z",
+          "run_id": "run-muoh8c0k",
+          "description": "Pre-remediation baseline snapshot",
+          "config": {
+            "storage": {
+              "bucket": "cloudmend-private-records",
+              "public_read": false,
+              "authenticated_read": true,
+              "classification": "CONFIDENTIAL",
+              "allowed_principals": [
+                "role:analyst",
+                "role:admin"
+              ]
+            },
+            "gateway": {
+              "service": "Apex Medical Patient Portal Gateway",
+              "routes": [
+                {
+                  "path": "/health",
+                  "allow_anonymous": true,
+                  "required_roles": []
+                },
+                {
+                  "path": "/api/records",
+                  "allow_anonymous": true,
+                  "required_roles": []
+                },
+                {
+                  "path": "/api/admin",
+                  "allow_anonymous": false,
+                  "required_roles": [
+                    "admin"
+                  ]
+                }
+              ]
+            },
+            "scenario_id": 3,
+            "scenario_name": "Self-Healing Recovery"
+          }
+        }
+      ],
+      "remediation_attempts": 2,
+      "verification_results": [
+        {
+          "id": "PROBE-SEC-01",
+          "category": "SECURITY",
+          "name": "Anonymous Access to /api/records",
+          "target": "/api/records",
+          "identity": "Anonymous",
+          "expected_status": "401 or 403",
+          "actual_status": 401,
+          "latency_ms": 8,
+          "passed": true,
+          "details": "Anonymous request correctly rejected with HTTP 401"
+        },
+        {
+          "id": "PROBE-SEC-02",
+          "category": "SECURITY",
+          "name": "Anonymous RustFS S3 Bucket Access",
+          "target": "s3://cloudmend-private-records/patient-records/*",
+          "identity": "Anonymous",
+          "expected_status": 403,
+          "actual_status": 403,
+          "latency_ms": 12,
+          "passed": true,
+          "details": "Bucket rejected anonymous read request with 403 Forbidden."
+        },
+        {
+          "id": "PROBE-SEC-03",
+          "category": "SECURITY",
+          "name": "Invalid Token Access to /api/records",
+          "target": "/api/records",
+          "identity": "Invalid Token",
+          "expected_status": 401,
+          "actual_status": 401,
+          "latency_ms": 10,
+          "passed": true,
+          "details": "Invalid token rejected with 401 Unauthorized."
+        },
+        {
+          "id": "PROBE-APP-01",
+          "category": "APPLICATION",
+          "name": "Public Health Check (/health)",
+          "target": "/health",
+          "identity": "Anonymous",
+          "expected_status": 200,
+          "actual_status": 200,
+          "latency_ms": 6,
+          "passed": true,
+          "details": "Health probe healthy (HTTP 200 OK)."
+        },
+        {
+          "id": "PROBE-APP-02",
+          "category": "APPLICATION",
+          "name": "Authorized Analyst Access to /api/records",
+          "target": "/api/records",
+          "identity": "Security Analyst",
+          "expected_status": 200,
+          "actual_status": 200,
+          "latency_ms": 14,
+          "passed": true,
+          "details": "Authorized Analyst successfully authenticated and retrieved medical charts (HTTP 200)."
+        },
+        {
+          "id": "PROBE-APP-03",
+          "category": "APPLICATION",
+          "name": "Administrator Access to /api/admin",
+          "target": "/api/admin",
+          "identity": "Administrator",
+          "expected_status": 200,
+          "actual_status": 200,
+          "latency_ms": 11,
+          "passed": true,
+          "details": "Administrator role verified for /api/admin (HTTP 200)."
+        },
+        {
+          "id": "PROBE-APP-04",
+          "category": "APPLICATION",
+          "name": "Role-Based Access Control Isolation",
+          "target": "/api/admin",
+          "identity": "Security Analyst",
+          "expected_status": 403,
+          "actual_status": 403,
+          "latency_ms": 9,
+          "passed": true,
+          "details": "Least privilege RBAC properly enforced: Analyst cannot access Admin control plane (HTTP 403)."
+        }
+      ],
+      "rollback_occurred": true,
+      "rollback_reason": "Candidate policy closed security exposure but broke legitimate Security Analyst workflow (HTTP 403 on /api/records).",
+      "final_outcome": "SUCCESS",
+      "elapsed_ms": 9178,
+      "model_used": "Gemini 3.8 Flash",
+      "events": [
+        {
+          "id": "evt-1790795210708-nab50",
+          "run_id": "run-muoh8c0k",
+          "timestamp": "2026-09-30T19:06:50.708Z",
+          "category": "SCAN",
+          "title": "Scanning Infrastructure Configuration",
+          "description": "Inspecting perimeter gateway routes and RustFS object storage permissions...",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795211210-iyojb",
+          "run_id": "run-muoh8c0k",
+          "timestamp": "2026-09-30T19:06:51.210Z",
+          "category": "EVIDENCE",
+          "title": "Critical Finding Identified: Unauthenticated API Route Exposure",
+          "description": "Perimeter gateway route /api/records has allow_anonymous=true. Anonymous requests retrieve patient diagnosis data.",
+          "level": "error"
+        },
+        {
+          "id": "evt-1790795211211-s9ub6",
+          "run_id": "run-muoh8c0k",
+          "timestamp": "2026-09-30T19:06:51.211Z",
+          "category": "RAG",
+          "title": "Retrieved Guidance: Perimeter API Gateway Authentication Enforcement",
+          "description": "Configure gateway authorizers to require valid JWT/Bearer credentials. Return HTTP 401 Unauthorized for missing tokens.",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795211812-0kbqr",
+          "run_id": "run-muoh8c0k",
+          "timestamp": "2026-09-30T19:06:51.812Z",
+          "category": "PLAN",
+          "title": "Agent Formulation of Remediation Plan",
+          "description": "Agent preparing candidate policy. Testing perimeter access restriction on Apex Medical gateway.",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795211813-arzju",
+          "run_id": "run-muoh8c0k",
+          "timestamp": "2026-09-30T19:06:51.813Z",
+          "category": "SNAPSHOT",
+          "title": "Captured Immutable Baseline Snapshot (rev-002)",
+          "description": "State hash: sha256:6910e44e40c9f79d. Registered rollback target prior to mutation.",
+          "level": "info",
+          "metadata": {
+            "revision": "rev-002",
+            "hash": "sha256:6910e44e40c9f79d"
+          }
+        },
+        {
+          "id": "evt-1790795212314-3ak9k",
+          "run_id": "run-muoh8c0k",
+          "timestamp": "2026-09-30T19:06:52.314Z",
+          "category": "MUTATION",
+          "title": "Applying Candidate Policy 1: Blanket Route Restriction",
+          "description": "Enforcing emergency perimeter deny rule on /api/records to immediately seal exposure.",
+          "level": "warning"
+        },
+        {
+          "id": "evt-1790795213016-n9lnq",
+          "run_id": "run-muoh8c0k",
+          "timestamp": "2026-09-30T19:06:53.016Z",
+          "category": "PROBE",
+          "title": "Executing Dual Verification Protocol (Candidate 1)",
+          "description": "Running independent Security attack probes and Application workflow probes concurrently...",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795213718-0ijn8",
+          "run_id": "run-muoh8c0k",
+          "timestamp": "2026-09-30T19:06:53.718Z",
+          "category": "PROBE",
+          "title": "Security Probe Result: PASS (Anonymous Blocked)",
+          "description": "Anonymous caller received HTTP 403 Forbidden. Attack vector is closed.",
+          "level": "success"
+        },
+        {
+          "id": "evt-1790795213719-dld39",
+          "run_id": "run-muoh8c0k",
+          "timestamp": "2026-09-30T19:06:53.719Z",
+          "category": "PROBE",
+          "title": "Application Probe Result: FAIL (Analyst Blocked)",
+          "description": "CRITICAL: Legitimate Security Analyst was blocked with HTTP 403! Clinical records workflow broken.",
+          "level": "error"
+        },
+        {
+          "id": "evt-1790795213720-ua2ci",
+          "run_id": "run-muoh8c0k",
+          "timestamp": "2026-09-30T19:06:53.720Z",
+          "category": "REGRESSION",
+          "title": "Application Workflow Regression Detected!",
+          "description": "Candidate policy closed security exposure but broke legitimate Security Analyst workflow (HTTP 403 on /api/records).",
+          "level": "error"
+        },
+        {
+          "id": "evt-1790795214522-c0y28",
+          "run_id": "run-muoh8c0k",
+          "timestamp": "2026-09-30T19:06:54.522Z",
+          "category": "ROLLBACK",
+          "title": "Triggering Automated Rollback to Snapshot rev-002",
+          "description": "Restoring baseline configuration hash sha256:6910e44e40c9f79d...",
+          "level": "warning"
+        },
+        {
+          "id": "evt-1790795217079-ljl0i",
+          "run_id": "run-muoh8c0k",
+          "timestamp": "2026-09-30T19:06:57.079Z",
+          "category": "REFLECTION",
+          "title": "Agent Reflection & Root Cause Analysis",
+          "description": "Candidate policy was overly restrictive: blanket denial on /api/records severed authorized analyst access. Replanning with fine-grained role-based authorizer granting analyst and admin identities while rejecting anonymous requests.",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795217880-27w04",
+          "run_id": "run-muoh8c0k",
+          "timestamp": "2026-09-30T19:06:57.880Z",
+          "category": "REPLAN",
+          "title": "Synthesizing Least-Privilege Policy (Candidate 2)",
+          "description": "Configuring gateway authorizer: allow_anonymous=false, required_roles=[\"analyst\", \"admin\"]. Preserving /health for anonymous uptime checks.",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795218481-0mtev",
+          "run_id": "run-muoh8c0k",
+          "timestamp": "2026-09-30T19:06:58.481Z",
+          "category": "MUTATION",
+          "title": "Applying Safer Least-Privilege Configuration",
+          "description": "Deploying calibrated route authorization rules to perimeter gateway...",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795219184-k8sal",
+          "run_id": "run-muoh8c0k",
+          "timestamp": "2026-09-30T19:06:59.184Z",
+          "category": "PROBE",
+          "title": "Final Dual Verification Protocol",
+          "description": "Running comprehensive suite of Security Attack probes and Application Health probes...",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795219885-yr79t",
+          "run_id": "run-muoh8c0k",
+          "timestamp": "2026-09-30T19:06:59.885Z",
+          "category": "OUTCOME",
+          "title": "Self-Healing Remediation Successful",
+          "description": "Data protected from anonymous access + application workflow verified intact for authorized analysts.",
+          "level": "success",
+          "metadata": {
+            "attempts": 2,
+            "rollback_occurred": true
+          }
+        }
+      ],
+      "diff": {
+        "before_json": "{\n  \"storage\": {\n    \"bucket\": \"cloudmend-private-records\",\n    \"public_read\": false,\n    \"authenticated_read\": true,\n    \"classification\": \"CONFIDENTIAL\",\n    \"allowed_principals\": [\n      \"role:analyst\",\n      \"role:admin\"\n    ]\n  },\n  \"gateway\": {\n    \"service\": \"Apex Medical Patient Portal Gateway\",\n    \"routes\": [\n      {\n        \"path\": \"/health\",\n        \"allow_anonymous\": true,\n        \"required_roles\": []\n      },\n      {\n        \"path\": \"/api/records\",\n        \"allow_anonymous\": true,\n        \"required_roles\": []\n      },\n      {\n        \"path\": \"/api/admin\",\n        \"allow_anonymous\": false,\n        \"required_roles\": [\n          \"admin\"\n        ]\n      }\n    ]\n  },\n  \"scenario_id\": 3,\n  \"scenario_name\": \"Self-Healing Recovery\"\n}",
+        "after_json": "{\n  \"storage\": {\n    \"bucket\": \"cloudmend-private-records\",\n    \"public_read\": false,\n    \"authenticated_read\": true,\n    \"classification\": \"CONFIDENTIAL\",\n    \"allowed_principals\": [\n      \"role:analyst\",\n      \"role:admin\"\n    ]\n  },\n  \"gateway\": {\n    \"service\": \"Apex Medical Patient Portal Gateway\",\n    \"routes\": [\n      {\n        \"path\": \"/health\",\n        \"allow_anonymous\": true,\n        \"required_roles\": []\n      },\n      {\n        \"path\": \"/api/records\",\n        \"allow_anonymous\": false,\n        \"required_roles\": [\n          \"analyst\",\n          \"admin\"\n        ],\n        \"block_all\": false\n      },\n      {\n        \"path\": \"/api/admin\",\n        \"allow_anonymous\": false,\n        \"required_roles\": [\n          \"admin\"\n        ]\n      }\n    ]\n  },\n  \"scenario_id\": 3,\n  \"scenario_name\": \"Self-Healing Recovery\"\n}"
+      }
+    },
+    {
+      "run_id": "run-muoh89m2",
+      "timestamp": "2026-09-30T19:06:50.706Z",
+      "scenario_name": "Storage Bucket Public Access",
+      "mode": "standard",
+      "finding": {
+        "id": "FINDING-STORAGE-02",
+        "resource": "cloudmend-private-records (RustFS)",
+        "vulnerability": "Publicly Accessible Storage Bucket",
+        "severity": "CRITICAL",
+        "evidence": "Sensitive synthetic records are accessible without authentication because the storage policy allows public read access (public_read: true).",
+        "affected_endpoint": "s3://cloudmend-private-records/patient-records/*",
+        "current_configuration": "{\n  \"bucket\": \"cloudmend-private-records\",\n  \"public_read\": true,\n  \"authenticated_read\": true,\n  \"classification\": \"CONFIDENTIAL\",\n  \"allowed_principals\": [\n    \"role:analyst\",\n    \"role:admin\",\n    \"public\"\n  ]\n}",
+        "recommended_remediation": "Remove anonymous read access (public_read: false) while preserving authenticated application and analyst access.",
+        "security_impact": "Unauthorized external threat actors can enumerate and download patient medical history without audit trail.",
+        "rag_sources": [
+          {
+            "id": "CIS-STORAGE-01",
+            "title": "S3 / RustFS Bucket Public Access Block",
+            "excerpt": "Private and confidential patient data buckets must have public read/write access explicitly denied at all times."
+          },
+          {
+            "id": "CIS-GATEWAY-02",
+            "title": "Perimeter API Gateway Authentication Enforcement",
+            "excerpt": "Sensitive healthcare endpoints (/api/records) must never be publicly exposed. All incoming traffic must present cryptographically validated tokens."
+          }
+        ]
+      },
+      "initial_config": {
+        "storage": {
+          "bucket": "cloudmend-private-records",
+          "public_read": true,
+          "authenticated_read": true,
+          "classification": "CONFIDENTIAL",
+          "allowed_principals": [
+            "role:analyst",
+            "role:admin",
+            "public"
+          ]
+        },
+        "gateway": {
+          "service": "Apex Medical Patient Portal Gateway",
+          "routes": [
+            {
+              "path": "/health",
+              "allow_anonymous": true,
+              "required_roles": []
+            },
+            {
+              "path": "/api/records",
+              "allow_anonymous": false,
+              "required_roles": [
+                "analyst",
+                "admin"
+              ]
+            },
+            {
+              "path": "/api/admin",
+              "allow_anonymous": false,
+              "required_roles": [
+                "admin"
+              ]
+            }
+          ]
+        },
+        "scenario_id": 2,
+        "scenario_name": "Storage Bucket Public Access"
+      },
+      "final_config": {
+        "storage": {
+          "bucket": "cloudmend-private-records",
+          "public_read": false,
+          "authenticated_read": true,
+          "classification": "CONFIDENTIAL",
+          "allowed_principals": [
+            "role:analyst",
+            "role:admin"
+          ]
+        },
+        "gateway": {
+          "service": "Apex Medical Patient Portal Gateway",
+          "routes": [
+            {
+              "path": "/health",
+              "allow_anonymous": true,
+              "required_roles": []
+            },
+            {
+              "path": "/api/records",
+              "allow_anonymous": false,
+              "required_roles": [
+                "analyst",
+                "admin"
+              ]
+            },
+            {
+              "path": "/api/admin",
+              "allow_anonymous": false,
+              "required_roles": [
+                "admin"
+              ]
+            }
+          ]
+        },
+        "scenario_id": 2,
+        "scenario_name": "Storage Bucket Public Access"
+      },
+      "snapshots": [
+        {
+          "revision": "rev-001",
+          "hash": "sha256:fc2f395bedc68029",
+          "timestamp": "2026-09-30T19:06:48.699Z",
+          "run_id": "run-muoh89m2",
+          "description": "Pre-remediation baseline snapshot",
+          "config": {
+            "storage": {
+              "bucket": "cloudmend-private-records",
+              "public_read": true,
+              "authenticated_read": true,
+              "classification": "CONFIDENTIAL",
+              "allowed_principals": [
+                "role:analyst",
+                "role:admin",
+                "public"
+              ]
+            },
+            "gateway": {
+              "service": "Apex Medical Patient Portal Gateway",
+              "routes": [
+                {
+                  "path": "/health",
+                  "allow_anonymous": true,
+                  "required_roles": []
+                },
+                {
+                  "path": "/api/records",
+                  "allow_anonymous": false,
+                  "required_roles": [
+                    "analyst",
+                    "admin"
+                  ]
+                },
+                {
+                  "path": "/api/admin",
+                  "allow_anonymous": false,
+                  "required_roles": [
+                    "admin"
+                  ]
+                }
+              ]
+            },
+            "scenario_id": 2,
+            "scenario_name": "Storage Bucket Public Access"
+          }
+        }
+      ],
+      "remediation_attempts": 1,
+      "verification_results": [
+        {
+          "id": "PROBE-SEC-01",
+          "category": "SECURITY",
+          "name": "Anonymous Access to /api/records",
+          "target": "/api/records",
+          "identity": "Anonymous",
+          "expected_status": "401 or 403",
+          "actual_status": 401,
+          "latency_ms": 8,
+          "passed": true,
+          "details": "Anonymous request correctly rejected with HTTP 401"
+        },
+        {
+          "id": "PROBE-SEC-02",
+          "category": "SECURITY",
+          "name": "Anonymous RustFS S3 Bucket Access",
+          "target": "s3://cloudmend-private-records/patient-records/*",
+          "identity": "Anonymous",
+          "expected_status": 403,
+          "actual_status": 403,
+          "latency_ms": 12,
+          "passed": true,
+          "details": "Bucket rejected anonymous read request with 403 Forbidden."
+        },
+        {
+          "id": "PROBE-SEC-03",
+          "category": "SECURITY",
+          "name": "Invalid Token Access to /api/records",
+          "target": "/api/records",
+          "identity": "Invalid Token",
+          "expected_status": 401,
+          "actual_status": 401,
+          "latency_ms": 10,
+          "passed": true,
+          "details": "Invalid token rejected with 401 Unauthorized."
+        },
+        {
+          "id": "PROBE-APP-01",
+          "category": "APPLICATION",
+          "name": "Public Health Check (/health)",
+          "target": "/health",
+          "identity": "Anonymous",
+          "expected_status": 200,
+          "actual_status": 200,
+          "latency_ms": 6,
+          "passed": true,
+          "details": "Health probe healthy (HTTP 200 OK)."
+        },
+        {
+          "id": "PROBE-APP-02",
+          "category": "APPLICATION",
+          "name": "Authorized Analyst Access to /api/records",
+          "target": "/api/records",
+          "identity": "Security Analyst",
+          "expected_status": 200,
+          "actual_status": 200,
+          "latency_ms": 14,
+          "passed": true,
+          "details": "Authorized Analyst successfully authenticated and retrieved medical charts (HTTP 200)."
+        },
+        {
+          "id": "PROBE-APP-03",
+          "category": "APPLICATION",
+          "name": "Administrator Access to /api/admin",
+          "target": "/api/admin",
+          "identity": "Administrator",
+          "expected_status": 200,
+          "actual_status": 200,
+          "latency_ms": 11,
+          "passed": true,
+          "details": "Administrator role verified for /api/admin (HTTP 200)."
+        },
+        {
+          "id": "PROBE-APP-04",
+          "category": "APPLICATION",
+          "name": "Role-Based Access Control Isolation",
+          "target": "/api/admin",
+          "identity": "Security Analyst",
+          "expected_status": 403,
+          "actual_status": 403,
+          "latency_ms": 9,
+          "passed": true,
+          "details": "Least privilege RBAC properly enforced: Analyst cannot access Admin control plane (HTTP 403)."
+        }
+      ],
+      "rollback_occurred": false,
+      "final_outcome": "SUCCESS",
+      "elapsed_ms": 3112,
+      "model_used": "Gemini 3.8 Flash",
+      "events": [
+        {
+          "id": "evt-1790795207594-hi3ft",
+          "run_id": "run-muoh89m2",
+          "timestamp": "2026-09-30T19:06:47.594Z",
+          "category": "SCAN",
+          "title": "Scanning Infrastructure Configuration",
+          "description": "Inspecting perimeter gateway routes and RustFS object storage permissions...",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795208096-deens",
+          "run_id": "run-muoh89m2",
+          "timestamp": "2026-09-30T19:06:48.096Z",
+          "category": "EVIDENCE",
+          "title": "Critical Finding Identified: Publicly Accessible Storage Bucket",
+          "description": "Sensitive synthetic records are accessible without authentication because the storage policy allows public read access (public_read: true).",
+          "level": "error"
+        },
+        {
+          "id": "evt-1790795208096-qu4py",
+          "run_id": "run-muoh89m2",
+          "timestamp": "2026-09-30T19:06:48.096Z",
+          "category": "RAG",
+          "title": "Retrieved Guidance: S3 / RustFS Bucket Public Access Block",
+          "description": "Remove anonymous Read/List permissions from bucket policies. Require authenticated service principals with explicit IAM roles.",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795208698-o5p4i",
+          "run_id": "run-muoh89m2",
+          "timestamp": "2026-09-30T19:06:48.698Z",
+          "category": "PLAN",
+          "title": "Agent Formulation of Remediation Plan",
+          "description": "Agent formulating least-privilege policy to restrict public access while retaining authorized service principals.",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795208699-7uxel",
+          "run_id": "run-muoh89m2",
+          "timestamp": "2026-09-30T19:06:48.699Z",
+          "category": "SNAPSHOT",
+          "title": "Captured Immutable Baseline Snapshot (rev-001)",
+          "description": "State hash: sha256:fc2f395bedc68029. Registered rollback target prior to mutation.",
+          "level": "info",
+          "metadata": {
+            "revision": "rev-001",
+            "hash": "sha256:fc2f395bedc68029"
+          }
+        },
+        {
+          "id": "evt-1790795209200-znvky",
+          "run_id": "run-muoh89m2",
+          "timestamp": "2026-09-30T19:06:49.200Z",
+          "category": "MUTATION",
+          "title": "Applying Storage Bucket Access Policy",
+          "description": "Setting public_read: false on RustFS bucket cloudmend-private-records while maintaining authenticated read for authorized principals.",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795210003-mphff",
+          "run_id": "run-muoh89m2",
+          "timestamp": "2026-09-30T19:06:50.003Z",
+          "category": "PROBE",
+          "title": "Final Dual Verification Protocol",
+          "description": "Running comprehensive suite of Security Attack probes and Application Health probes...",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795210705-7pnxr",
+          "run_id": "run-muoh89m2",
+          "timestamp": "2026-09-30T19:06:50.705Z",
+          "category": "OUTCOME",
+          "title": "Remediation Verified Successful",
+          "description": "Data protected from anonymous access + application workflow verified intact for authorized analysts.",
+          "level": "success",
+          "metadata": {
+            "attempts": 1,
+            "rollback_occurred": false
+          }
+        }
+      ],
+      "diff": {
+        "before_json": "{\n  \"storage\": {\n    \"bucket\": \"cloudmend-private-records\",\n    \"public_read\": true,\n    \"authenticated_read\": true,\n    \"classification\": \"CONFIDENTIAL\",\n    \"allowed_principals\": [\n      \"role:analyst\",\n      \"role:admin\",\n      \"public\"\n    ]\n  },\n  \"gateway\": {\n    \"service\": \"Apex Medical Patient Portal Gateway\",\n    \"routes\": [\n      {\n        \"path\": \"/health\",\n        \"allow_anonymous\": true,\n        \"required_roles\": []\n      },\n      {\n        \"path\": \"/api/records\",\n        \"allow_anonymous\": false,\n        \"required_roles\": [\n          \"analyst\",\n          \"admin\"\n        ]\n      },\n      {\n        \"path\": \"/api/admin\",\n        \"allow_anonymous\": false,\n        \"required_roles\": [\n          \"admin\"\n        ]\n      }\n    ]\n  },\n  \"scenario_id\": 2,\n  \"scenario_name\": \"Storage Bucket Public Access\"\n}",
+        "after_json": "{\n  \"storage\": {\n    \"bucket\": \"cloudmend-private-records\",\n    \"public_read\": false,\n    \"authenticated_read\": true,\n    \"classification\": \"CONFIDENTIAL\",\n    \"allowed_principals\": [\n      \"role:analyst\",\n      \"role:admin\"\n    ]\n  },\n  \"gateway\": {\n    \"service\": \"Apex Medical Patient Portal Gateway\",\n    \"routes\": [\n      {\n        \"path\": \"/health\",\n        \"allow_anonymous\": true,\n        \"required_roles\": []\n      },\n      {\n        \"path\": \"/api/records\",\n        \"allow_anonymous\": false,\n        \"required_roles\": [\n          \"analyst\",\n          \"admin\"\n        ]\n      },\n      {\n        \"path\": \"/api/admin\",\n        \"allow_anonymous\": false,\n        \"required_roles\": [\n          \"admin\"\n        ]\n      }\n    ]\n  },\n  \"scenario_id\": 2,\n  \"scenario_name\": \"Storage Bucket Public Access\"\n}"
+      }
+    },
+    {
+      "run_id": "run-muoh7f5m",
+      "timestamp": "2026-09-30T19:06:15.958Z",
+      "scenario_name": "Self-Healing Recovery",
+      "mode": "self_healing",
+      "finding": {
+        "id": "FINDING-GATEWAY-01",
+        "resource": "Apex Medical Patient Portal Gateway",
+        "vulnerability": "Unauthenticated API Route Exposure",
+        "severity": "CRITICAL",
+        "evidence": "Perimeter gateway route /api/records has allow_anonymous=true. Anonymous requests retrieve patient diagnosis data.",
+        "affected_endpoint": "/api/records",
+        "current_configuration": "{\n  \"path\": \"/api/records\",\n  \"allow_anonymous\": true,\n  \"required_roles\": []\n}",
+        "recommended_remediation": "Enforce Bearer authorization. Require analyst or admin roles for records endpoint; preserve /health for public monitoring.",
+        "security_impact": "Anonymous users bypass identity perimeter and query protected patient records.",
+        "rag_sources": [
+          {
+            "id": "CIS-GATEWAY-02",
+            "title": "Perimeter API Gateway Authentication Enforcement",
+            "excerpt": "Sensitive healthcare endpoints (/api/records) must never be publicly exposed. All incoming traffic must present cryptographically validated tokens."
+          },
+          {
+            "id": "CLOUDMEND-PRIN-03",
+            "title": "Least Privilege vs Blanket Denial",
+            "excerpt": "Remediation must not deploy blanket deny rules on active endpoints, as this breaks legitimate business applications and causes service outages."
+          }
+        ]
+      },
+      "initial_config": {
+        "storage": {
+          "bucket": "cloudmend-private-records",
+          "public_read": false,
+          "authenticated_read": true,
+          "classification": "CONFIDENTIAL",
+          "allowed_principals": [
+            "role:analyst",
+            "role:admin"
+          ]
+        },
+        "gateway": {
+          "service": "Apex Medical Patient Portal Gateway",
+          "routes": [
+            {
+              "path": "/health",
+              "allow_anonymous": true,
+              "required_roles": []
+            },
+            {
+              "path": "/api/records",
+              "allow_anonymous": true,
+              "required_roles": []
+            },
+            {
+              "path": "/api/admin",
+              "allow_anonymous": false,
+              "required_roles": [
+                "admin"
+              ]
+            }
+          ]
+        },
+        "scenario_id": 3,
+        "scenario_name": "Self-Healing Recovery"
+      },
+      "candidate_config": {
+        "storage": {
+          "bucket": "cloudmend-private-records",
+          "public_read": false,
+          "authenticated_read": true,
+          "classification": "CONFIDENTIAL",
+          "allowed_principals": [
+            "role:analyst",
+            "role:admin"
+          ]
+        },
+        "gateway": {
+          "service": "Apex Medical Patient Portal Gateway",
+          "routes": [
+            {
+              "path": "/health",
+              "allow_anonymous": true,
+              "required_roles": []
+            },
+            {
+              "path": "/api/records",
+              "allow_anonymous": false,
+              "required_roles": [],
+              "block_all": true
+            },
+            {
+              "path": "/api/admin",
+              "allow_anonymous": false,
+              "required_roles": [
+                "admin"
+              ]
+            }
+          ]
+        },
+        "scenario_id": 3,
+        "scenario_name": "Self-Healing Recovery"
+      },
+      "final_config": {
+        "storage": {
+          "bucket": "cloudmend-private-records",
+          "public_read": false,
+          "authenticated_read": true,
+          "classification": "CONFIDENTIAL",
+          "allowed_principals": [
+            "role:analyst",
+            "role:admin"
+          ]
+        },
+        "gateway": {
+          "service": "Apex Medical Patient Portal Gateway",
+          "routes": [
+            {
+              "path": "/health",
+              "allow_anonymous": true,
+              "required_roles": []
+            },
+            {
+              "path": "/api/records",
+              "allow_anonymous": false,
+              "required_roles": [
+                "analyst",
+                "admin"
+              ],
+              "block_all": false
+            },
+            {
+              "path": "/api/admin",
+              "allow_anonymous": false,
+              "required_roles": [
+                "admin"
+              ]
+            }
+          ]
+        },
+        "scenario_id": 3,
+        "scenario_name": "Self-Healing Recovery"
+      },
+      "snapshots": [
+        {
+          "revision": "rev-002",
+          "hash": "sha256:6910e44e40c9f79d",
+          "timestamp": "2026-09-30T19:06:09.226Z",
+          "run_id": "run-muoh7f5m",
+          "description": "Pre-remediation baseline snapshot",
+          "config": {
+            "storage": {
+              "bucket": "cloudmend-private-records",
+              "public_read": false,
+              "authenticated_read": true,
+              "classification": "CONFIDENTIAL",
+              "allowed_principals": [
+                "role:analyst",
+                "role:admin"
+              ]
+            },
+            "gateway": {
+              "service": "Apex Medical Patient Portal Gateway",
+              "routes": [
+                {
+                  "path": "/health",
+                  "allow_anonymous": true,
+                  "required_roles": []
+                },
+                {
+                  "path": "/api/records",
+                  "allow_anonymous": true,
+                  "required_roles": []
+                },
+                {
+                  "path": "/api/admin",
+                  "allow_anonymous": false,
+                  "required_roles": [
+                    "admin"
+                  ]
+                }
+              ]
+            },
+            "scenario_id": 3,
+            "scenario_name": "Self-Healing Recovery"
+          }
+        }
+      ],
+      "remediation_attempts": 2,
+      "verification_results": [
+        {
+          "id": "PROBE-SEC-01",
+          "category": "SECURITY",
+          "name": "Anonymous Access to /api/records",
+          "target": "/api/records",
+          "identity": "Anonymous",
+          "expected_status": "401 or 403",
+          "actual_status": 401,
+          "latency_ms": 8,
+          "passed": true,
+          "details": "Anonymous request correctly rejected with HTTP 401"
+        },
+        {
+          "id": "PROBE-SEC-02",
+          "category": "SECURITY",
+          "name": "Anonymous RustFS S3 Bucket Access",
+          "target": "s3://cloudmend-private-records/patient-records/*",
+          "identity": "Anonymous",
+          "expected_status": 403,
+          "actual_status": 403,
+          "latency_ms": 12,
+          "passed": true,
+          "details": "Bucket rejected anonymous read request with 403 Forbidden."
+        },
+        {
+          "id": "PROBE-SEC-03",
+          "category": "SECURITY",
+          "name": "Invalid Token Access to /api/records",
+          "target": "/api/records",
+          "identity": "Invalid Token",
+          "expected_status": 401,
+          "actual_status": 401,
+          "latency_ms": 10,
+          "passed": true,
+          "details": "Invalid token rejected with 401 Unauthorized."
+        },
+        {
+          "id": "PROBE-APP-01",
+          "category": "APPLICATION",
+          "name": "Public Health Check (/health)",
+          "target": "/health",
+          "identity": "Anonymous",
+          "expected_status": 200,
+          "actual_status": 200,
+          "latency_ms": 6,
+          "passed": true,
+          "details": "Health probe healthy (HTTP 200 OK)."
+        },
+        {
+          "id": "PROBE-APP-02",
+          "category": "APPLICATION",
+          "name": "Authorized Analyst Access to /api/records",
+          "target": "/api/records",
+          "identity": "Security Analyst",
+          "expected_status": 200,
+          "actual_status": 200,
+          "latency_ms": 14,
+          "passed": true,
+          "details": "Authorized Analyst successfully authenticated and retrieved medical charts (HTTP 200)."
+        },
+        {
+          "id": "PROBE-APP-03",
+          "category": "APPLICATION",
+          "name": "Administrator Access to /api/admin",
+          "target": "/api/admin",
+          "identity": "Administrator",
+          "expected_status": 200,
+          "actual_status": 200,
+          "latency_ms": 11,
+          "passed": true,
+          "details": "Administrator role verified for /api/admin (HTTP 200)."
+        },
+        {
+          "id": "PROBE-APP-04",
+          "category": "APPLICATION",
+          "name": "Role-Based Access Control Isolation",
+          "target": "/api/admin",
+          "identity": "Security Analyst",
+          "expected_status": 403,
+          "actual_status": 403,
+          "latency_ms": 9,
+          "passed": true,
+          "details": "Least privilege RBAC properly enforced: Analyst cannot access Admin control plane (HTTP 403)."
+        }
+      ],
+      "rollback_occurred": true,
+      "rollback_reason": "Candidate policy closed security exposure but broke legitimate Security Analyst workflow (HTTP 403 on /api/records).",
+      "final_outcome": "SUCCESS",
+      "elapsed_ms": 7836,
+      "model_used": "Gemini 2.5 Flash",
+      "events": [
+        {
+          "id": "evt-1790795168122-padeq",
+          "run_id": "run-muoh7f5m",
+          "timestamp": "2026-09-30T19:06:08.122Z",
+          "category": "SCAN",
+          "title": "Scanning Infrastructure Configuration",
+          "description": "Inspecting perimeter gateway routes and RustFS object storage permissions...",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795168624-x9tvk",
+          "run_id": "run-muoh7f5m",
+          "timestamp": "2026-09-30T19:06:08.624Z",
+          "category": "EVIDENCE",
+          "title": "Critical Finding Identified: Unauthenticated API Route Exposure",
+          "description": "Perimeter gateway route /api/records has allow_anonymous=true. Anonymous requests retrieve patient diagnosis data.",
+          "level": "error"
+        },
+        {
+          "id": "evt-1790795168624-168dl",
+          "run_id": "run-muoh7f5m",
+          "timestamp": "2026-09-30T19:06:08.624Z",
+          "category": "RAG",
+          "title": "Retrieved Guidance: Perimeter API Gateway Authentication Enforcement",
+          "description": "Configure gateway authorizers to require valid JWT/Bearer credentials. Return HTTP 401 Unauthorized for missing tokens.",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795169225-6z5gh",
+          "run_id": "run-muoh7f5m",
+          "timestamp": "2026-09-30T19:06:09.225Z",
+          "category": "PLAN",
+          "title": "Agent Formulation of Remediation Plan",
+          "description": "Agent preparing candidate policy. Testing perimeter access restriction on Apex Medical gateway.",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795169226-8ijqp",
+          "run_id": "run-muoh7f5m",
+          "timestamp": "2026-09-30T19:06:09.226Z",
+          "category": "SNAPSHOT",
+          "title": "Captured Immutable Baseline Snapshot (rev-002)",
+          "description": "State hash: sha256:6910e44e40c9f79d. Registered rollback target prior to mutation.",
+          "level": "info",
+          "metadata": {
+            "revision": "rev-002",
+            "hash": "sha256:6910e44e40c9f79d"
+          }
+        },
+        {
+          "id": "evt-1790795169727-bm8p8",
+          "run_id": "run-muoh7f5m",
+          "timestamp": "2026-09-30T19:06:09.727Z",
+          "category": "MUTATION",
+          "title": "Applying Candidate Policy 1: Blanket Route Restriction",
+          "description": "Enforcing emergency perimeter deny rule on /api/records to immediately seal exposure.",
+          "level": "warning"
+        },
+        {
+          "id": "evt-1790795170429-1g8zn",
+          "run_id": "run-muoh7f5m",
+          "timestamp": "2026-09-30T19:06:10.429Z",
+          "category": "PROBE",
+          "title": "Executing Dual Verification Protocol (Candidate 1)",
+          "description": "Running independent Security attack probes and Application workflow probes concurrently...",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795171131-z2msc",
+          "run_id": "run-muoh7f5m",
+          "timestamp": "2026-09-30T19:06:11.131Z",
+          "category": "PROBE",
+          "title": "Security Probe Result: PASS (Anonymous Blocked)",
+          "description": "Anonymous caller received HTTP 403 Forbidden. Attack vector is closed.",
+          "level": "success"
+        },
+        {
+          "id": "evt-1790795171132-u9uph",
+          "run_id": "run-muoh7f5m",
+          "timestamp": "2026-09-30T19:06:11.132Z",
+          "category": "PROBE",
+          "title": "Application Probe Result: FAIL (Analyst Blocked)",
+          "description": "CRITICAL: Legitimate Security Analyst was blocked with HTTP 403! Clinical records workflow broken.",
+          "level": "error"
+        },
+        {
+          "id": "evt-1790795171132-ujtou",
+          "run_id": "run-muoh7f5m",
+          "timestamp": "2026-09-30T19:06:11.132Z",
+          "category": "REGRESSION",
+          "title": "Application Workflow Regression Detected!",
+          "description": "Candidate policy closed security exposure but broke legitimate Security Analyst workflow (HTTP 403 on /api/records).",
+          "level": "error"
+        },
+        {
+          "id": "evt-1790795171933-50pu7",
+          "run_id": "run-muoh7f5m",
+          "timestamp": "2026-09-30T19:06:11.933Z",
+          "category": "ROLLBACK",
+          "title": "Triggering Automated Rollback to Snapshot rev-002",
+          "description": "Restoring baseline configuration hash sha256:6910e44e40c9f79d...",
+          "level": "warning"
+        },
+        {
+          "id": "evt-1790795173150-4xs7f",
+          "run_id": "run-muoh7f5m",
+          "timestamp": "2026-09-30T19:06:13.150Z",
+          "category": "REFLECTION",
+          "title": "Agent Reflection & Root Cause Analysis",
+          "description": "Candidate policy was overly restrictive: blanket denial on /api/records severed authorized analyst access. Replanning with fine-grained role-based authorizer granting analyst and admin identities while rejecting anonymous requests.",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795173952-zdk5z",
+          "run_id": "run-muoh7f5m",
+          "timestamp": "2026-09-30T19:06:13.952Z",
+          "category": "REPLAN",
+          "title": "Synthesizing Least-Privilege Policy (Candidate 2)",
+          "description": "Configuring gateway authorizer: allow_anonymous=false, required_roles=[\"analyst\", \"admin\"]. Preserving /health for anonymous uptime checks.",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795174553-z7hfq",
+          "run_id": "run-muoh7f5m",
+          "timestamp": "2026-09-30T19:06:14.553Z",
+          "category": "MUTATION",
+          "title": "Applying Safer Least-Privilege Configuration",
+          "description": "Deploying calibrated route authorization rules to perimeter gateway...",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795175255-kh7ei",
+          "run_id": "run-muoh7f5m",
+          "timestamp": "2026-09-30T19:06:15.255Z",
+          "category": "PROBE",
+          "title": "Final Dual Verification Protocol",
+          "description": "Running comprehensive suite of Security Attack probes and Application Health probes...",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795175957-2ameo",
+          "run_id": "run-muoh7f5m",
+          "timestamp": "2026-09-30T19:06:15.957Z",
+          "category": "OUTCOME",
+          "title": "Self-Healing Remediation Successful",
+          "description": "Data protected from anonymous access + application workflow verified intact for authorized analysts.",
+          "level": "success",
+          "metadata": {
+            "attempts": 2,
+            "rollback_occurred": true
+          }
+        }
+      ],
+      "diff": {
+        "before_json": "{\n  \"storage\": {\n    \"bucket\": \"cloudmend-private-records\",\n    \"public_read\": false,\n    \"authenticated_read\": true,\n    \"classification\": \"CONFIDENTIAL\",\n    \"allowed_principals\": [\n      \"role:analyst\",\n      \"role:admin\"\n    ]\n  },\n  \"gateway\": {\n    \"service\": \"Apex Medical Patient Portal Gateway\",\n    \"routes\": [\n      {\n        \"path\": \"/health\",\n        \"allow_anonymous\": true,\n        \"required_roles\": []\n      },\n      {\n        \"path\": \"/api/records\",\n        \"allow_anonymous\": true,\n        \"required_roles\": []\n      },\n      {\n        \"path\": \"/api/admin\",\n        \"allow_anonymous\": false,\n        \"required_roles\": [\n          \"admin\"\n        ]\n      }\n    ]\n  },\n  \"scenario_id\": 3,\n  \"scenario_name\": \"Self-Healing Recovery\"\n}",
+        "after_json": "{\n  \"storage\": {\n    \"bucket\": \"cloudmend-private-records\",\n    \"public_read\": false,\n    \"authenticated_read\": true,\n    \"classification\": \"CONFIDENTIAL\",\n    \"allowed_principals\": [\n      \"role:analyst\",\n      \"role:admin\"\n    ]\n  },\n  \"gateway\": {\n    \"service\": \"Apex Medical Patient Portal Gateway\",\n    \"routes\": [\n      {\n        \"path\": \"/health\",\n        \"allow_anonymous\": true,\n        \"required_roles\": []\n      },\n      {\n        \"path\": \"/api/records\",\n        \"allow_anonymous\": false,\n        \"required_roles\": [\n          \"analyst\",\n          \"admin\"\n        ],\n        \"block_all\": false\n      },\n      {\n        \"path\": \"/api/admin\",\n        \"allow_anonymous\": false,\n        \"required_roles\": [\n          \"admin\"\n        ]\n      }\n    ]\n  },\n  \"scenario_id\": 3,\n  \"scenario_name\": \"Self-Healing Recovery\"\n}"
+      }
+    },
+    {
+      "run_id": "run-muoh7cr5",
+      "timestamp": "2026-09-30T19:06:08.120Z",
+      "scenario_name": "Storage Bucket Public Access",
+      "mode": "standard",
+      "finding": {
+        "id": "FINDING-STORAGE-02",
+        "resource": "cloudmend-private-records (RustFS)",
+        "vulnerability": "Publicly Accessible Storage Bucket",
+        "severity": "CRITICAL",
+        "evidence": "Sensitive synthetic records are accessible without authentication because the storage policy allows public read access (public_read: true).",
+        "affected_endpoint": "s3://cloudmend-private-records/patient-records/*",
+        "current_configuration": "{\n  \"bucket\": \"cloudmend-private-records\",\n  \"public_read\": true,\n  \"authenticated_read\": true,\n  \"classification\": \"CONFIDENTIAL\",\n  \"allowed_principals\": [\n    \"role:analyst\",\n    \"role:admin\",\n    \"public\"\n  ]\n}",
+        "recommended_remediation": "Remove anonymous read access (public_read: false) while preserving authenticated application and analyst access.",
+        "security_impact": "Unauthorized external threat actors can enumerate and download patient medical history without audit trail.",
+        "rag_sources": [
+          {
+            "id": "CIS-STORAGE-01",
+            "title": "S3 / RustFS Bucket Public Access Block",
+            "excerpt": "Private and confidential patient data buckets must have public read/write access explicitly denied at all times."
+          },
+          {
+            "id": "CIS-GATEWAY-02",
+            "title": "Perimeter API Gateway Authentication Enforcement",
+            "excerpt": "Sensitive healthcare endpoints (/api/records) must never be publicly exposed. All incoming traffic must present cryptographically validated tokens."
+          }
+        ]
+      },
+      "initial_config": {
+        "storage": {
+          "bucket": "cloudmend-private-records",
+          "public_read": true,
+          "authenticated_read": true,
+          "classification": "CONFIDENTIAL",
+          "allowed_principals": [
+            "role:analyst",
+            "role:admin",
+            "public"
+          ]
+        },
+        "gateway": {
+          "service": "Apex Medical Patient Portal Gateway",
+          "routes": [
+            {
+              "path": "/health",
+              "allow_anonymous": true,
+              "required_roles": []
+            },
+            {
+              "path": "/api/records",
+              "allow_anonymous": false,
+              "required_roles": [
+                "analyst",
+                "admin"
+              ]
+            },
+            {
+              "path": "/api/admin",
+              "allow_anonymous": false,
+              "required_roles": [
+                "admin"
+              ]
+            }
+          ]
+        },
+        "scenario_id": 2,
+        "scenario_name": "Storage Bucket Public Access"
+      },
+      "final_config": {
+        "storage": {
+          "bucket": "cloudmend-private-records",
+          "public_read": false,
+          "authenticated_read": true,
+          "classification": "CONFIDENTIAL",
+          "allowed_principals": [
+            "role:analyst",
+            "role:admin"
+          ]
+        },
+        "gateway": {
+          "service": "Apex Medical Patient Portal Gateway",
+          "routes": [
+            {
+              "path": "/health",
+              "allow_anonymous": true,
+              "required_roles": []
+            },
+            {
+              "path": "/api/records",
+              "allow_anonymous": false,
+              "required_roles": [
+                "analyst",
+                "admin"
+              ]
+            },
+            {
+              "path": "/api/admin",
+              "allow_anonymous": false,
+              "required_roles": [
+                "admin"
+              ]
+            }
+          ]
+        },
+        "scenario_id": 2,
+        "scenario_name": "Storage Bucket Public Access"
+      },
+      "snapshots": [
+        {
+          "revision": "rev-001",
+          "hash": "sha256:fc2f395bedc68029",
+          "timestamp": "2026-09-30T19:06:06.115Z",
+          "run_id": "run-muoh7cr5",
+          "description": "Pre-remediation baseline snapshot",
+          "config": {
+            "storage": {
+              "bucket": "cloudmend-private-records",
+              "public_read": true,
+              "authenticated_read": true,
+              "classification": "CONFIDENTIAL",
+              "allowed_principals": [
+                "role:analyst",
+                "role:admin",
+                "public"
+              ]
+            },
+            "gateway": {
+              "service": "Apex Medical Patient Portal Gateway",
+              "routes": [
+                {
+                  "path": "/health",
+                  "allow_anonymous": true,
+                  "required_roles": []
+                },
+                {
+                  "path": "/api/records",
+                  "allow_anonymous": false,
+                  "required_roles": [
+                    "analyst",
+                    "admin"
+                  ]
+                },
+                {
+                  "path": "/api/admin",
+                  "allow_anonymous": false,
+                  "required_roles": [
+                    "admin"
+                  ]
+                }
+              ]
+            },
+            "scenario_id": 2,
+            "scenario_name": "Storage Bucket Public Access"
+          }
+        }
+      ],
+      "remediation_attempts": 1,
+      "verification_results": [
+        {
+          "id": "PROBE-SEC-01",
+          "category": "SECURITY",
+          "name": "Anonymous Access to /api/records",
+          "target": "/api/records",
+          "identity": "Anonymous",
+          "expected_status": "401 or 403",
+          "actual_status": 401,
+          "latency_ms": 8,
+          "passed": true,
+          "details": "Anonymous request correctly rejected with HTTP 401"
+        },
+        {
+          "id": "PROBE-SEC-02",
+          "category": "SECURITY",
+          "name": "Anonymous RustFS S3 Bucket Access",
+          "target": "s3://cloudmend-private-records/patient-records/*",
+          "identity": "Anonymous",
+          "expected_status": 403,
+          "actual_status": 403,
+          "latency_ms": 12,
+          "passed": true,
+          "details": "Bucket rejected anonymous read request with 403 Forbidden."
+        },
+        {
+          "id": "PROBE-SEC-03",
+          "category": "SECURITY",
+          "name": "Invalid Token Access to /api/records",
+          "target": "/api/records",
+          "identity": "Invalid Token",
+          "expected_status": 401,
+          "actual_status": 401,
+          "latency_ms": 10,
+          "passed": true,
+          "details": "Invalid token rejected with 401 Unauthorized."
+        },
+        {
+          "id": "PROBE-APP-01",
+          "category": "APPLICATION",
+          "name": "Public Health Check (/health)",
+          "target": "/health",
+          "identity": "Anonymous",
+          "expected_status": 200,
+          "actual_status": 200,
+          "latency_ms": 6,
+          "passed": true,
+          "details": "Health probe healthy (HTTP 200 OK)."
+        },
+        {
+          "id": "PROBE-APP-02",
+          "category": "APPLICATION",
+          "name": "Authorized Analyst Access to /api/records",
+          "target": "/api/records",
+          "identity": "Security Analyst",
+          "expected_status": 200,
+          "actual_status": 200,
+          "latency_ms": 14,
+          "passed": true,
+          "details": "Authorized Analyst successfully authenticated and retrieved medical charts (HTTP 200)."
+        },
+        {
+          "id": "PROBE-APP-03",
+          "category": "APPLICATION",
+          "name": "Administrator Access to /api/admin",
+          "target": "/api/admin",
+          "identity": "Administrator",
+          "expected_status": 200,
+          "actual_status": 200,
+          "latency_ms": 11,
+          "passed": true,
+          "details": "Administrator role verified for /api/admin (HTTP 200)."
+        },
+        {
+          "id": "PROBE-APP-04",
+          "category": "APPLICATION",
+          "name": "Role-Based Access Control Isolation",
+          "target": "/api/admin",
+          "identity": "Security Analyst",
+          "expected_status": 403,
+          "actual_status": 403,
+          "latency_ms": 9,
+          "passed": true,
+          "details": "Least privilege RBAC properly enforced: Analyst cannot access Admin control plane (HTTP 403)."
+        }
+      ],
+      "rollback_occurred": false,
+      "final_outcome": "SUCCESS",
+      "elapsed_ms": 3111,
+      "model_used": "Gemini 2.5 Flash",
+      "events": [
+        {
+          "id": "evt-1790795165009-7ibz4",
+          "run_id": "run-muoh7cr5",
+          "timestamp": "2026-09-30T19:06:05.009Z",
+          "category": "SCAN",
+          "title": "Scanning Infrastructure Configuration",
+          "description": "Inspecting perimeter gateway routes and RustFS object storage permissions...",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795165512-2qz5x",
+          "run_id": "run-muoh7cr5",
+          "timestamp": "2026-09-30T19:06:05.512Z",
+          "category": "EVIDENCE",
+          "title": "Critical Finding Identified: Publicly Accessible Storage Bucket",
+          "description": "Sensitive synthetic records are accessible without authentication because the storage policy allows public read access (public_read: true).",
+          "level": "error"
+        },
+        {
+          "id": "evt-1790795165512-zw2y1",
+          "run_id": "run-muoh7cr5",
+          "timestamp": "2026-09-30T19:06:05.512Z",
+          "category": "RAG",
+          "title": "Retrieved Guidance: S3 / RustFS Bucket Public Access Block",
+          "description": "Remove anonymous Read/List permissions from bucket policies. Require authenticated service principals with explicit IAM roles.",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795166114-9mbud",
+          "run_id": "run-muoh7cr5",
+          "timestamp": "2026-09-30T19:06:06.114Z",
+          "category": "PLAN",
+          "title": "Agent Formulation of Remediation Plan",
+          "description": "Agent formulating least-privilege policy to restrict public access while retaining authorized service principals.",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795166115-lg2i6",
+          "run_id": "run-muoh7cr5",
+          "timestamp": "2026-09-30T19:06:06.115Z",
+          "category": "SNAPSHOT",
+          "title": "Captured Immutable Baseline Snapshot (rev-001)",
+          "description": "State hash: sha256:fc2f395bedc68029. Registered rollback target prior to mutation.",
+          "level": "info",
+          "metadata": {
+            "revision": "rev-001",
+            "hash": "sha256:fc2f395bedc68029"
+          }
+        },
+        {
+          "id": "evt-1790795166616-fy44q",
+          "run_id": "run-muoh7cr5",
+          "timestamp": "2026-09-30T19:06:06.616Z",
+          "category": "MUTATION",
+          "title": "Applying Storage Bucket Access Policy",
+          "description": "Setting public_read: false on RustFS bucket cloudmend-private-records while maintaining authenticated read for authorized principals.",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795167418-m2oxi",
+          "run_id": "run-muoh7cr5",
+          "timestamp": "2026-09-30T19:06:07.418Z",
+          "category": "PROBE",
+          "title": "Final Dual Verification Protocol",
+          "description": "Running comprehensive suite of Security Attack probes and Application Health probes...",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795168120-1jafe",
+          "run_id": "run-muoh7cr5",
+          "timestamp": "2026-09-30T19:06:08.120Z",
+          "category": "OUTCOME",
+          "title": "Remediation Verified Successful",
+          "description": "Data protected from anonymous access + application workflow verified intact for authorized analysts.",
+          "level": "success",
+          "metadata": {
+            "attempts": 1,
+            "rollback_occurred": false
+          }
+        }
+      ],
+      "diff": {
+        "before_json": "{\n  \"storage\": {\n    \"bucket\": \"cloudmend-private-records\",\n    \"public_read\": true,\n    \"authenticated_read\": true,\n    \"classification\": \"CONFIDENTIAL\",\n    \"allowed_principals\": [\n      \"role:analyst\",\n      \"role:admin\",\n      \"public\"\n    ]\n  },\n  \"gateway\": {\n    \"service\": \"Apex Medical Patient Portal Gateway\",\n    \"routes\": [\n      {\n        \"path\": \"/health\",\n        \"allow_anonymous\": true,\n        \"required_roles\": []\n      },\n      {\n        \"path\": \"/api/records\",\n        \"allow_anonymous\": false,\n        \"required_roles\": [\n          \"analyst\",\n          \"admin\"\n        ]\n      },\n      {\n        \"path\": \"/api/admin\",\n        \"allow_anonymous\": false,\n        \"required_roles\": [\n          \"admin\"\n        ]\n      }\n    ]\n  },\n  \"scenario_id\": 2,\n  \"scenario_name\": \"Storage Bucket Public Access\"\n}",
+        "after_json": "{\n  \"storage\": {\n    \"bucket\": \"cloudmend-private-records\",\n    \"public_read\": false,\n    \"authenticated_read\": true,\n    \"classification\": \"CONFIDENTIAL\",\n    \"allowed_principals\": [\n      \"role:analyst\",\n      \"role:admin\"\n    ]\n  },\n  \"gateway\": {\n    \"service\": \"Apex Medical Patient Portal Gateway\",\n    \"routes\": [\n      {\n        \"path\": \"/health\",\n        \"allow_anonymous\": true,\n        \"required_roles\": []\n      },\n      {\n        \"path\": \"/api/records\",\n        \"allow_anonymous\": false,\n        \"required_roles\": [\n          \"analyst\",\n          \"admin\"\n        ]\n      },\n      {\n        \"path\": \"/api/admin\",\n        \"allow_anonymous\": false,\n        \"required_roles\": [\n          \"admin\"\n        ]\n      }\n    ]\n  },\n  \"scenario_id\": 2,\n  \"scenario_name\": \"Storage Bucket Public Access\"\n}"
+      }
+    },
+    {
+      "run_id": "run-muoh6jtv",
+      "timestamp": "2026-09-30T19:05:30.631Z",
+      "scenario_name": "Storage Bucket Public Access",
+      "mode": "standard",
+      "finding": {
+        "id": "FINDING-STORAGE-02",
+        "resource": "cloudmend-private-records (RustFS)",
+        "vulnerability": "Publicly Accessible Storage Bucket",
+        "severity": "CRITICAL",
+        "evidence": "Sensitive synthetic records are accessible without authentication because the storage policy allows public read access (public_read: true).",
+        "affected_endpoint": "s3://cloudmend-private-records/patient-records/*",
+        "current_configuration": "{\n  \"bucket\": \"cloudmend-private-records\",\n  \"public_read\": true,\n  \"authenticated_read\": true,\n  \"classification\": \"CONFIDENTIAL\",\n  \"allowed_principals\": [\n    \"role:analyst\",\n    \"role:admin\",\n    \"public\"\n  ]\n}",
+        "recommended_remediation": "Remove anonymous read access (public_read: false) while preserving authenticated application and analyst access.",
+        "security_impact": "Unauthorized external threat actors can enumerate and download patient medical history without audit trail.",
+        "rag_sources": []
+      },
+      "initial_config": {
+        "storage": {
+          "bucket": "cloudmend-private-records",
+          "public_read": true,
+          "authenticated_read": true,
+          "classification": "CONFIDENTIAL",
+          "allowed_principals": [
+            "role:analyst",
+            "role:admin",
+            "public"
+          ]
+        },
+        "gateway": {
+          "service": "Apex Medical Patient Portal Gateway",
+          "routes": [
+            {
+              "path": "/health",
+              "allow_anonymous": true,
+              "required_roles": []
+            },
+            {
+              "path": "/api/records",
+              "allow_anonymous": false,
+              "required_roles": [
+                "analyst",
+                "admin"
+              ]
+            },
+            {
+              "path": "/api/admin",
+              "allow_anonymous": false,
+              "required_roles": [
+                "admin"
+              ]
+            }
+          ]
+        },
+        "scenario_id": 2,
+        "scenario_name": "Storage Bucket Public Access"
+      },
+      "final_config": {
+        "storage": {
+          "bucket": "cloudmend-private-records",
+          "public_read": false,
+          "authenticated_read": true,
+          "classification": "CONFIDENTIAL",
+          "allowed_principals": [
+            "role:analyst",
+            "role:admin"
+          ]
+        },
+        "gateway": {
+          "service": "Apex Medical Patient Portal Gateway",
+          "routes": [
+            {
+              "path": "/health",
+              "allow_anonymous": true,
+              "required_roles": []
+            },
+            {
+              "path": "/api/records",
+              "allow_anonymous": false,
+              "required_roles": [
+                "analyst",
+                "admin"
+              ]
+            },
+            {
+              "path": "/api/admin",
+              "allow_anonymous": false,
+              "required_roles": [
+                "admin"
+              ]
+            }
+          ]
+        },
+        "scenario_id": 2,
+        "scenario_name": "Storage Bucket Public Access"
+      },
+      "snapshots": [
+        {
+          "revision": "rev-001",
+          "hash": "sha256:fc2f395bedc68029",
+          "timestamp": "2026-09-30T19:05:28.626Z",
+          "run_id": "run-muoh6jtv",
+          "description": "Pre-remediation baseline snapshot",
+          "config": {
+            "storage": {
+              "bucket": "cloudmend-private-records",
+              "public_read": true,
+              "authenticated_read": true,
+              "classification": "CONFIDENTIAL",
+              "allowed_principals": [
+                "role:analyst",
+                "role:admin",
+                "public"
+              ]
+            },
+            "gateway": {
+              "service": "Apex Medical Patient Portal Gateway",
+              "routes": [
+                {
+                  "path": "/health",
+                  "allow_anonymous": true,
+                  "required_roles": []
+                },
+                {
+                  "path": "/api/records",
+                  "allow_anonymous": false,
+                  "required_roles": [
+                    "analyst",
+                    "admin"
+                  ]
+                },
+                {
+                  "path": "/api/admin",
+                  "allow_anonymous": false,
+                  "required_roles": [
+                    "admin"
+                  ]
+                }
+              ]
+            },
+            "scenario_id": 2,
+            "scenario_name": "Storage Bucket Public Access"
+          }
+        }
+      ],
+      "remediation_attempts": 1,
+      "verification_results": [
+        {
+          "id": "PROBE-SEC-01",
+          "category": "SECURITY",
+          "name": "Anonymous Access to /api/records",
+          "target": "/api/records",
+          "identity": "Anonymous",
+          "expected_status": "401 or 403",
+          "actual_status": 401,
+          "latency_ms": 8,
+          "passed": true,
+          "details": "Anonymous request correctly rejected with HTTP 401"
+        },
+        {
+          "id": "PROBE-SEC-02",
+          "category": "SECURITY",
+          "name": "Anonymous RustFS S3 Bucket Access",
+          "target": "s3://cloudmend-private-records/patient-records/*",
+          "identity": "Anonymous",
+          "expected_status": 403,
+          "actual_status": 403,
+          "latency_ms": 12,
+          "passed": true,
+          "details": "Bucket rejected anonymous read request with 403 Forbidden."
+        },
+        {
+          "id": "PROBE-SEC-03",
+          "category": "SECURITY",
+          "name": "Invalid Token Access to /api/records",
+          "target": "/api/records",
+          "identity": "Invalid Token",
+          "expected_status": 401,
+          "actual_status": 401,
+          "latency_ms": 10,
+          "passed": true,
+          "details": "Invalid token rejected with 401 Unauthorized."
+        },
+        {
+          "id": "PROBE-APP-01",
+          "category": "APPLICATION",
+          "name": "Public Health Check (/health)",
+          "target": "/health",
+          "identity": "Anonymous",
+          "expected_status": 200,
+          "actual_status": 200,
+          "latency_ms": 6,
+          "passed": true,
+          "details": "Health probe healthy (HTTP 200 OK)."
+        },
+        {
+          "id": "PROBE-APP-02",
+          "category": "APPLICATION",
+          "name": "Authorized Analyst Access to /api/records",
+          "target": "/api/records",
+          "identity": "Security Analyst",
+          "expected_status": 200,
+          "actual_status": 200,
+          "latency_ms": 14,
+          "passed": true,
+          "details": "Authorized Analyst successfully authenticated and retrieved medical charts (HTTP 200)."
+        },
+        {
+          "id": "PROBE-APP-03",
+          "category": "APPLICATION",
+          "name": "Administrator Access to /api/admin",
+          "target": "/api/admin",
+          "identity": "Administrator",
+          "expected_status": 200,
+          "actual_status": 200,
+          "latency_ms": 11,
+          "passed": true,
+          "details": "Administrator role verified for /api/admin (HTTP 200)."
+        },
+        {
+          "id": "PROBE-APP-04",
+          "category": "APPLICATION",
+          "name": "Role-Based Access Control Isolation",
+          "target": "/api/admin",
+          "identity": "Security Analyst",
+          "expected_status": 403,
+          "actual_status": 403,
+          "latency_ms": 9,
+          "passed": true,
+          "details": "Least privilege RBAC properly enforced: Analyst cannot access Admin control plane (HTTP 403)."
+        }
+      ],
+      "rollback_occurred": false,
+      "final_outcome": "SUCCESS",
+      "elapsed_ms": 3108,
+      "model_used": "Gemini 2.5 Flash",
+      "events": [
+        {
+          "id": "evt-1790795127523-75ux8",
+          "run_id": "run-muoh6jtv",
+          "timestamp": "2026-09-30T19:05:27.523Z",
+          "category": "SCAN",
+          "title": "Scanning Infrastructure Configuration",
+          "description": "Inspecting perimeter gateway routes and RustFS object storage permissions...",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795128024-o562n",
+          "run_id": "run-muoh6jtv",
+          "timestamp": "2026-09-30T19:05:28.024Z",
+          "category": "EVIDENCE",
+          "title": "Critical Finding Identified: Publicly Accessible Storage Bucket",
+          "description": "Sensitive synthetic records are accessible without authentication because the storage policy allows public read access (public_read: true).",
+          "level": "error"
+        },
+        {
+          "id": "evt-1790795128025-aa1xh",
+          "run_id": "run-muoh6jtv",
+          "timestamp": "2026-09-30T19:05:28.025Z",
+          "category": "RAG",
+          "title": "Retrieved Guidance: Least Privilege Enforcement",
+          "description": "Enforce authenticated access while preserving authorized application roles.",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795128626-u6efg",
+          "run_id": "run-muoh6jtv",
+          "timestamp": "2026-09-30T19:05:28.626Z",
+          "category": "PLAN",
+          "title": "Agent Formulation of Remediation Plan",
+          "description": "Agent formulating least-privilege policy to restrict public access while retaining authorized service principals.",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795128626-dw6x5",
+          "run_id": "run-muoh6jtv",
+          "timestamp": "2026-09-30T19:05:28.626Z",
+          "category": "SNAPSHOT",
+          "title": "Captured Immutable Baseline Snapshot (rev-001)",
+          "description": "State hash: sha256:fc2f395bedc68029. Registered rollback target prior to mutation.",
+          "level": "info",
+          "metadata": {
+            "revision": "rev-001",
+            "hash": "sha256:fc2f395bedc68029"
+          }
+        },
+        {
+          "id": "evt-1790795129127-nsg8x",
+          "run_id": "run-muoh6jtv",
+          "timestamp": "2026-09-30T19:05:29.127Z",
+          "category": "MUTATION",
+          "title": "Applying Storage Bucket Access Policy",
+          "description": "Setting public_read: false on RustFS bucket cloudmend-private-records while maintaining authenticated read for authorized principals.",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795129929-lzfxj",
+          "run_id": "run-muoh6jtv",
+          "timestamp": "2026-09-30T19:05:29.929Z",
+          "category": "PROBE",
+          "title": "Final Dual Verification Protocol",
+          "description": "Running comprehensive suite of Security Attack probes and Application Health probes...",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795130631-1bz7d",
+          "run_id": "run-muoh6jtv",
+          "timestamp": "2026-09-30T19:05:30.631Z",
+          "category": "OUTCOME",
+          "title": "Remediation Verified Successful",
+          "description": "Data protected from anonymous access + application workflow verified intact for authorized analysts.",
+          "level": "success",
+          "metadata": {
+            "attempts": 1,
+            "rollback_occurred": false
+          }
+        }
+      ],
+      "diff": {
+        "before_json": "{\n  \"storage\": {\n    \"bucket\": \"cloudmend-private-records\",\n    \"public_read\": true,\n    \"authenticated_read\": true,\n    \"classification\": \"CONFIDENTIAL\",\n    \"allowed_principals\": [\n      \"role:analyst\",\n      \"role:admin\",\n      \"public\"\n    ]\n  },\n  \"gateway\": {\n    \"service\": \"Apex Medical Patient Portal Gateway\",\n    \"routes\": [\n      {\n        \"path\": \"/health\",\n        \"allow_anonymous\": true,\n        \"required_roles\": []\n      },\n      {\n        \"path\": \"/api/records\",\n        \"allow_anonymous\": false,\n        \"required_roles\": [\n          \"analyst\",\n          \"admin\"\n        ]\n      },\n      {\n        \"path\": \"/api/admin\",\n        \"allow_anonymous\": false,\n        \"required_roles\": [\n          \"admin\"\n        ]\n      }\n    ]\n  },\n  \"scenario_id\": 2,\n  \"scenario_name\": \"Storage Bucket Public Access\"\n}",
+        "after_json": "{\n  \"storage\": {\n    \"bucket\": \"cloudmend-private-records\",\n    \"public_read\": false,\n    \"authenticated_read\": true,\n    \"classification\": \"CONFIDENTIAL\",\n    \"allowed_principals\": [\n      \"role:analyst\",\n      \"role:admin\"\n    ]\n  },\n  \"gateway\": {\n    \"service\": \"Apex Medical Patient Portal Gateway\",\n    \"routes\": [\n      {\n        \"path\": \"/health\",\n        \"allow_anonymous\": true,\n        \"required_roles\": []\n      },\n      {\n        \"path\": \"/api/records\",\n        \"allow_anonymous\": false,\n        \"required_roles\": [\n          \"analyst\",\n          \"admin\"\n        ]\n      },\n      {\n        \"path\": \"/api/admin\",\n        \"allow_anonymous\": false,\n        \"required_roles\": [\n          \"admin\"\n        ]\n      }\n    ]\n  },\n  \"scenario_id\": 2,\n  \"scenario_name\": \"Storage Bucket Public Access\"\n}"
+      }
+    },
+    {
+      "run_id": "run-muoh5tm8",
+      "timestamp": "2026-09-30T19:05:01.151Z",
+      "scenario_name": "Self-Healing Recovery",
+      "mode": "self_healing",
+      "finding": {
+        "id": "FINDING-GATEWAY-01",
+        "resource": "Apex Medical Patient Portal Gateway",
+        "vulnerability": "Unauthenticated API Route Exposure",
+        "severity": "CRITICAL",
+        "evidence": "Perimeter gateway route /api/records has allow_anonymous=true. Anonymous requests retrieve patient diagnosis data.",
+        "affected_endpoint": "/api/records",
+        "current_configuration": "{\n  \"path\": \"/api/records\",\n  \"allow_anonymous\": true,\n  \"required_roles\": []\n}",
+        "recommended_remediation": "Enforce Bearer authorization. Require analyst or admin roles for records endpoint; preserve /health for public monitoring.",
+        "security_impact": "Anonymous users bypass identity perimeter and query protected patient records.",
+        "rag_sources": []
+      },
+      "initial_config": {
+        "storage": {
+          "bucket": "cloudmend-private-records",
+          "public_read": false,
+          "authenticated_read": true,
+          "classification": "CONFIDENTIAL",
+          "allowed_principals": [
+            "role:analyst",
+            "role:admin"
+          ]
+        },
+        "gateway": {
+          "service": "Apex Medical Patient Portal Gateway",
+          "routes": [
+            {
+              "path": "/health",
+              "allow_anonymous": true,
+              "required_roles": []
+            },
+            {
+              "path": "/api/records",
+              "allow_anonymous": true,
+              "required_roles": []
+            },
+            {
+              "path": "/api/admin",
+              "allow_anonymous": false,
+              "required_roles": [
+                "admin"
+              ]
+            }
+          ]
+        },
+        "scenario_id": 3,
+        "scenario_name": "Self-Healing Recovery"
+      },
+      "candidate_config": {
+        "storage": {
+          "bucket": "cloudmend-private-records",
+          "public_read": false,
+          "authenticated_read": true,
+          "classification": "CONFIDENTIAL",
+          "allowed_principals": [
+            "role:analyst",
+            "role:admin"
+          ]
+        },
+        "gateway": {
+          "service": "Apex Medical Patient Portal Gateway",
+          "routes": [
+            {
+              "path": "/health",
+              "allow_anonymous": true,
+              "required_roles": []
+            },
+            {
+              "path": "/api/records",
+              "allow_anonymous": false,
+              "required_roles": [],
+              "block_all": true
+            },
+            {
+              "path": "/api/admin",
+              "allow_anonymous": false,
+              "required_roles": [
+                "admin"
+              ]
+            }
+          ]
+        },
+        "scenario_id": 3,
+        "scenario_name": "Self-Healing Recovery"
+      },
+      "final_config": {
+        "storage": {
+          "bucket": "cloudmend-private-records",
+          "public_read": false,
+          "authenticated_read": true,
+          "classification": "CONFIDENTIAL",
+          "allowed_principals": [
+            "role:analyst",
+            "role:admin"
+          ]
+        },
+        "gateway": {
+          "service": "Apex Medical Patient Portal Gateway",
+          "routes": [
+            {
+              "path": "/health",
+              "allow_anonymous": true,
+              "required_roles": []
+            },
+            {
+              "path": "/api/records",
+              "allow_anonymous": false,
+              "required_roles": [
+                "analyst",
+                "admin"
+              ],
+              "block_all": false
+            },
+            {
+              "path": "/api/admin",
+              "allow_anonymous": false,
+              "required_roles": [
+                "admin"
+              ]
+            }
+          ]
+        },
+        "scenario_id": 3,
+        "scenario_name": "Self-Healing Recovery"
+      },
+      "snapshots": [
+        {
+          "revision": "rev-001",
+          "hash": "sha256:6910e44e40c9f79d",
+          "timestamp": "2026-09-30T19:04:54.655Z",
+          "run_id": "run-muoh5tm8",
+          "description": "Pre-remediation baseline snapshot",
+          "config": {
+            "storage": {
+              "bucket": "cloudmend-private-records",
+              "public_read": false,
+              "authenticated_read": true,
+              "classification": "CONFIDENTIAL",
+              "allowed_principals": [
+                "role:analyst",
+                "role:admin"
+              ]
+            },
+            "gateway": {
+              "service": "Apex Medical Patient Portal Gateway",
+              "routes": [
+                {
+                  "path": "/health",
+                  "allow_anonymous": true,
+                  "required_roles": []
+                },
+                {
+                  "path": "/api/records",
+                  "allow_anonymous": true,
+                  "required_roles": []
+                },
+                {
+                  "path": "/api/admin",
+                  "allow_anonymous": false,
+                  "required_roles": [
+                    "admin"
+                  ]
+                }
+              ]
+            },
+            "scenario_id": 3,
+            "scenario_name": "Self-Healing Recovery"
+          }
+        }
+      ],
+      "remediation_attempts": 2,
+      "verification_results": [
+        {
+          "id": "PROBE-SEC-01",
+          "category": "SECURITY",
+          "name": "Anonymous Access to /api/records",
+          "target": "/api/records",
+          "identity": "Anonymous",
+          "expected_status": "401 or 403",
+          "actual_status": 401,
+          "latency_ms": 9,
+          "passed": true,
+          "details": "Anonymous request correctly rejected with HTTP 401"
+        },
+        {
+          "id": "PROBE-SEC-02",
+          "category": "SECURITY",
+          "name": "Anonymous RustFS S3 Bucket Access",
+          "target": "s3://cloudmend-private-records/patient-records/*",
+          "identity": "Anonymous",
+          "expected_status": 403,
+          "actual_status": 403,
+          "latency_ms": 12,
+          "passed": true,
+          "details": "Bucket rejected anonymous read request with 403 Forbidden."
+        },
+        {
+          "id": "PROBE-SEC-03",
+          "category": "SECURITY",
+          "name": "Invalid Token Access to /api/records",
+          "target": "/api/records",
+          "identity": "Invalid Token",
+          "expected_status": 401,
+          "actual_status": 401,
+          "latency_ms": 10,
+          "passed": true,
+          "details": "Invalid token rejected with 401 Unauthorized."
+        },
+        {
+          "id": "PROBE-APP-01",
+          "category": "APPLICATION",
+          "name": "Public Health Check (/health)",
+          "target": "/health",
+          "identity": "Anonymous",
+          "expected_status": 200,
+          "actual_status": 200,
+          "latency_ms": 6,
+          "passed": true,
+          "details": "Health probe healthy (HTTP 200 OK)."
+        },
+        {
+          "id": "PROBE-APP-02",
+          "category": "APPLICATION",
+          "name": "Authorized Analyst Access to /api/records",
+          "target": "/api/records",
+          "identity": "Security Analyst",
+          "expected_status": 200,
+          "actual_status": 200,
+          "latency_ms": 14,
+          "passed": true,
+          "details": "Authorized Analyst successfully authenticated and retrieved medical charts (HTTP 200)."
+        },
+        {
+          "id": "PROBE-APP-03",
+          "category": "APPLICATION",
+          "name": "Administrator Access to /api/admin",
+          "target": "/api/admin",
+          "identity": "Administrator",
+          "expected_status": 200,
+          "actual_status": 200,
+          "latency_ms": 11,
+          "passed": true,
+          "details": "Administrator role verified for /api/admin (HTTP 200)."
+        },
+        {
+          "id": "PROBE-APP-04",
+          "category": "APPLICATION",
+          "name": "Role-Based Access Control Isolation",
+          "target": "/api/admin",
+          "identity": "Security Analyst",
+          "expected_status": 403,
+          "actual_status": 403,
+          "latency_ms": 9,
+          "passed": true,
+          "details": "Least privilege RBAC properly enforced: Analyst cannot access Admin control plane (HTTP 403)."
+        }
+      ],
+      "rollback_occurred": true,
+      "rollback_reason": "Candidate policy closed security exposure but broke legitimate Security Analyst workflow (HTTP 403 on /api/records).",
+      "final_outcome": "SUCCESS",
+      "elapsed_ms": 7599,
+      "model_used": "Gemini 2.5 Flash",
+      "events": [
+        {
+          "id": "evt-1790795093552-4w6gj",
+          "run_id": "run-muoh5tm8",
+          "timestamp": "2026-09-30T19:04:53.552Z",
+          "category": "SCAN",
+          "title": "Scanning Infrastructure Configuration",
+          "description": "Inspecting perimeter gateway routes and RustFS object storage permissions...",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795094052-uzl3b",
+          "run_id": "run-muoh5tm8",
+          "timestamp": "2026-09-30T19:04:54.052Z",
+          "category": "EVIDENCE",
+          "title": "Critical Finding Identified: Unauthenticated API Route Exposure",
+          "description": "Perimeter gateway route /api/records has allow_anonymous=true. Anonymous requests retrieve patient diagnosis data.",
+          "level": "error"
+        },
+        {
+          "id": "evt-1790795094053-zvksj",
+          "run_id": "run-muoh5tm8",
+          "timestamp": "2026-09-30T19:04:54.053Z",
+          "category": "RAG",
+          "title": "Retrieved Guidance: Least Privilege Enforcement",
+          "description": "Enforce authenticated access while preserving authorized application roles.",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795094654-9wqoc",
+          "run_id": "run-muoh5tm8",
+          "timestamp": "2026-09-30T19:04:54.654Z",
+          "category": "PLAN",
+          "title": "Agent Formulation of Remediation Plan",
+          "description": "Agent preparing candidate policy. Testing perimeter access restriction on Apex Medical gateway.",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795094655-khfmy",
+          "run_id": "run-muoh5tm8",
+          "timestamp": "2026-09-30T19:04:54.655Z",
+          "category": "SNAPSHOT",
+          "title": "Captured Immutable Baseline Snapshot (rev-001)",
+          "description": "State hash: sha256:6910e44e40c9f79d. Registered rollback target prior to mutation.",
+          "level": "info",
+          "metadata": {
+            "revision": "rev-001",
+            "hash": "sha256:6910e44e40c9f79d"
+          }
+        },
+        {
+          "id": "evt-1790795095155-wvbdq",
+          "run_id": "run-muoh5tm8",
+          "timestamp": "2026-09-30T19:04:55.155Z",
+          "category": "MUTATION",
+          "title": "Applying Candidate Policy 1: Blanket Route Restriction",
+          "description": "Enforcing emergency perimeter deny rule on /api/records to immediately seal exposure.",
+          "level": "warning"
+        },
+        {
+          "id": "evt-1790795095857-eyfxo",
+          "run_id": "run-muoh5tm8",
+          "timestamp": "2026-09-30T19:04:55.857Z",
+          "category": "PROBE",
+          "title": "Executing Dual Verification Protocol (Candidate 1)",
+          "description": "Running independent Security attack probes and Application workflow probes concurrently...",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795096559-ayr6z",
+          "run_id": "run-muoh5tm8",
+          "timestamp": "2026-09-30T19:04:56.559Z",
+          "category": "PROBE",
+          "title": "Security Probe Result: PASS (Anonymous Blocked)",
+          "description": "Anonymous caller received HTTP 403 Forbidden. Attack vector is closed.",
+          "level": "success"
+        },
+        {
+          "id": "evt-1790795096559-g3n75",
+          "run_id": "run-muoh5tm8",
+          "timestamp": "2026-09-30T19:04:56.559Z",
+          "category": "PROBE",
+          "title": "Application Probe Result: FAIL (Analyst Blocked)",
+          "description": "CRITICAL: Legitimate Security Analyst was blocked with HTTP 403! Clinical records workflow broken.",
+          "level": "error"
+        },
+        {
+          "id": "evt-1790795096560-bwnfg",
+          "run_id": "run-muoh5tm8",
+          "timestamp": "2026-09-30T19:04:56.560Z",
+          "category": "REGRESSION",
+          "title": "Application Workflow Regression Detected!",
+          "description": "Candidate policy closed security exposure but broke legitimate Security Analyst workflow (HTTP 403 on /api/records).",
+          "level": "error"
+        },
+        {
+          "id": "evt-1790795097361-1stye",
+          "run_id": "run-muoh5tm8",
+          "timestamp": "2026-09-30T19:04:57.361Z",
+          "category": "ROLLBACK",
+          "title": "Triggering Automated Rollback to Snapshot rev-001",
+          "description": "Restoring baseline configuration hash sha256:6910e44e40c9f79d...",
+          "level": "warning"
+        },
+        {
+          "id": "evt-1790795098346-038s7",
+          "run_id": "run-muoh5tm8",
+          "timestamp": "2026-09-30T19:04:58.346Z",
+          "category": "REFLECTION",
+          "title": "Agent Reflection & Root Cause Analysis",
+          "description": "Candidate policy was overly restrictive: blanket denial on /api/records severed authorized analyst access. Replanning with fine-grained role-based authorizer granting analyst and admin identities while rejecting anonymous requests.",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795099146-ftjut",
+          "run_id": "run-muoh5tm8",
+          "timestamp": "2026-09-30T19:04:59.146Z",
+          "category": "REPLAN",
+          "title": "Synthesizing Least-Privilege Policy (Candidate 2)",
+          "description": "Configuring gateway authorizer: allow_anonymous=false, required_roles=[\"analyst\", \"admin\"]. Preserving /health for anonymous uptime checks.",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795099748-ye0cx",
+          "run_id": "run-muoh5tm8",
+          "timestamp": "2026-09-30T19:04:59.748Z",
+          "category": "MUTATION",
+          "title": "Applying Safer Least-Privilege Configuration",
+          "description": "Deploying calibrated route authorization rules to perimeter gateway...",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795100450-uxcna",
+          "run_id": "run-muoh5tm8",
+          "timestamp": "2026-09-30T19:05:00.450Z",
+          "category": "PROBE",
+          "title": "Final Dual Verification Protocol",
+          "description": "Running comprehensive suite of Security Attack probes and Application Health probes...",
+          "level": "info"
+        },
+        {
+          "id": "evt-1790795101151-aba6s",
+          "run_id": "run-muoh5tm8",
+          "timestamp": "2026-09-30T19:05:01.151Z",
+          "category": "OUTCOME",
+          "title": "Self-Healing Remediation Successful",
+          "description": "Data protected from anonymous access + application workflow verified intact for authorized analysts.",
+          "level": "success",
+          "metadata": {
+            "attempts": 2,
+            "rollback_occurred": true
+          }
+        }
+      ],
+      "diff": {
+        "before_json": "{\n  \"storage\": {\n    \"bucket\": \"cloudmend-private-records\",\n    \"public_read\": false,\n    \"authenticated_read\": true,\n    \"classification\": \"CONFIDENTIAL\",\n    \"allowed_principals\": [\n      \"role:analyst\",\n      \"role:admin\"\n    ]\n  },\n  \"gateway\": {\n    \"service\": \"Apex Medical Patient Portal Gateway\",\n    \"routes\": [\n      {\n        \"path\": \"/health\",\n        \"allow_anonymous\": true,\n        \"required_roles\": []\n      },\n      {\n        \"path\": \"/api/records\",\n        \"allow_anonymous\": true,\n        \"required_roles\": []\n      },\n      {\n        \"path\": \"/api/admin\",\n        \"allow_anonymous\": false,\n        \"required_roles\": [\n          \"admin\"\n        ]\n      }\n    ]\n  },\n  \"scenario_id\": 3,\n  \"scenario_name\": \"Self-Healing Recovery\"\n}",
+        "after_json": "{\n  \"storage\": {\n    \"bucket\": \"cloudmend-private-records\",\n    \"public_read\": false,\n    \"authenticated_read\": true,\n    \"classification\": \"CONFIDENTIAL\",\n    \"allowed_principals\": [\n      \"role:analyst\",\n      \"role:admin\"\n    ]\n  },\n  \"gateway\": {\n    \"service\": \"Apex Medical Patient Portal Gateway\",\n    \"routes\": [\n      {\n        \"path\": \"/health\",\n        \"allow_anonymous\": true,\n        \"required_roles\": []\n      },\n      {\n        \"path\": \"/api/records\",\n        \"allow_anonymous\": false,\n        \"required_roles\": [\n          \"analyst\",\n          \"admin\"\n        ],\n        \"block_all\": false\n      },\n      {\n        \"path\": \"/api/admin\",\n        \"allow_anonymous\": false,\n        \"required_roles\": [\n          \"admin\"\n        ]\n      }\n    ]\n  },\n  \"scenario_id\": 3,\n  \"scenario_name\": \"Self-Healing Recovery\"\n}"
+      }
+    }
+  ],
+  "events": [
+    {
+      "id": "evt-1790795081012-kz7mb",
+      "run_id": "scan-muoh5jxw",
+      "timestamp": "2026-09-30T19:04:41.012Z",
+      "category": "SCAN",
+      "title": "Cloud Security Scan Initiated",
+      "description": "Executing inspection probes on Apex Medical perimeter gateway and RustFS object storage...",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795081612-v8rm8",
+      "run_id": "scan-muoh5jxw",
+      "timestamp": "2026-09-30T19:04:41.613Z",
+      "category": "EVIDENCE",
+      "title": "Vulnerability Detected: Unauthenticated API Route Exposure",
+      "description": "Perimeter gateway route /api/records has allow_anonymous=true. Anonymous requests retrieve patient diagnosis data.",
+      "level": "error",
+      "metadata": {
+        "severity": "CRITICAL",
+        "resource": "Apex Medical Patient Portal Gateway"
+      }
+    },
+    {
+      "id": "evt-1790795081613-uzonq",
+      "run_id": "scan-muoh5jxw",
+      "timestamp": "2026-09-30T19:04:41.613Z",
+      "category": "RAG",
+      "title": "Retrieved Security Best Practice (CIS-01)",
+      "description": "Private health data must enforce strict authentication and least privilege.",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795093552-4w6gj",
+      "run_id": "run-muoh5tm8",
+      "timestamp": "2026-09-30T19:04:53.552Z",
+      "category": "SCAN",
+      "title": "Scanning Infrastructure Configuration",
+      "description": "Inspecting perimeter gateway routes and RustFS object storage permissions...",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795094052-uzl3b",
+      "run_id": "run-muoh5tm8",
+      "timestamp": "2026-09-30T19:04:54.052Z",
+      "category": "EVIDENCE",
+      "title": "Critical Finding Identified: Unauthenticated API Route Exposure",
+      "description": "Perimeter gateway route /api/records has allow_anonymous=true. Anonymous requests retrieve patient diagnosis data.",
+      "level": "error"
+    },
+    {
+      "id": "evt-1790795094053-zvksj",
+      "run_id": "run-muoh5tm8",
+      "timestamp": "2026-09-30T19:04:54.053Z",
+      "category": "RAG",
+      "title": "Retrieved Guidance: Least Privilege Enforcement",
+      "description": "Enforce authenticated access while preserving authorized application roles.",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795094654-9wqoc",
+      "run_id": "run-muoh5tm8",
+      "timestamp": "2026-09-30T19:04:54.654Z",
+      "category": "PLAN",
+      "title": "Agent Formulation of Remediation Plan",
+      "description": "Agent preparing candidate policy. Testing perimeter access restriction on Apex Medical gateway.",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795094655-khfmy",
+      "run_id": "run-muoh5tm8",
+      "timestamp": "2026-09-30T19:04:54.655Z",
+      "category": "SNAPSHOT",
+      "title": "Captured Immutable Baseline Snapshot (rev-001)",
+      "description": "State hash: sha256:6910e44e40c9f79d. Registered rollback target prior to mutation.",
+      "level": "info",
+      "metadata": {
+        "revision": "rev-001",
+        "hash": "sha256:6910e44e40c9f79d"
+      }
+    },
+    {
+      "id": "evt-1790795095155-wvbdq",
+      "run_id": "run-muoh5tm8",
+      "timestamp": "2026-09-30T19:04:55.155Z",
+      "category": "MUTATION",
+      "title": "Applying Candidate Policy 1: Blanket Route Restriction",
+      "description": "Enforcing emergency perimeter deny rule on /api/records to immediately seal exposure.",
+      "level": "warning"
+    },
+    {
+      "id": "evt-1790795095857-eyfxo",
+      "run_id": "run-muoh5tm8",
+      "timestamp": "2026-09-30T19:04:55.857Z",
+      "category": "PROBE",
+      "title": "Executing Dual Verification Protocol (Candidate 1)",
+      "description": "Running independent Security attack probes and Application workflow probes concurrently...",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795096559-ayr6z",
+      "run_id": "run-muoh5tm8",
+      "timestamp": "2026-09-30T19:04:56.559Z",
+      "category": "PROBE",
+      "title": "Security Probe Result: PASS (Anonymous Blocked)",
+      "description": "Anonymous caller received HTTP 403 Forbidden. Attack vector is closed.",
+      "level": "success"
+    },
+    {
+      "id": "evt-1790795096559-g3n75",
+      "run_id": "run-muoh5tm8",
+      "timestamp": "2026-09-30T19:04:56.559Z",
+      "category": "PROBE",
+      "title": "Application Probe Result: FAIL (Analyst Blocked)",
+      "description": "CRITICAL: Legitimate Security Analyst was blocked with HTTP 403! Clinical records workflow broken.",
+      "level": "error"
+    },
+    {
+      "id": "evt-1790795096560-bwnfg",
+      "run_id": "run-muoh5tm8",
+      "timestamp": "2026-09-30T19:04:56.560Z",
+      "category": "REGRESSION",
+      "title": "Application Workflow Regression Detected!",
+      "description": "Candidate policy closed security exposure but broke legitimate Security Analyst workflow (HTTP 403 on /api/records).",
+      "level": "error"
+    },
+    {
+      "id": "evt-1790795097361-1stye",
+      "run_id": "run-muoh5tm8",
+      "timestamp": "2026-09-30T19:04:57.361Z",
+      "category": "ROLLBACK",
+      "title": "Triggering Automated Rollback to Snapshot rev-001",
+      "description": "Restoring baseline configuration hash sha256:6910e44e40c9f79d...",
+      "level": "warning"
+    },
+    {
+      "id": "evt-1790795098346-038s7",
+      "run_id": "run-muoh5tm8",
+      "timestamp": "2026-09-30T19:04:58.346Z",
+      "category": "REFLECTION",
+      "title": "Agent Reflection & Root Cause Analysis",
+      "description": "Candidate policy was overly restrictive: blanket denial on /api/records severed authorized analyst access. Replanning with fine-grained role-based authorizer granting analyst and admin identities while rejecting anonymous requests.",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795099146-ftjut",
+      "run_id": "run-muoh5tm8",
+      "timestamp": "2026-09-30T19:04:59.146Z",
+      "category": "REPLAN",
+      "title": "Synthesizing Least-Privilege Policy (Candidate 2)",
+      "description": "Configuring gateway authorizer: allow_anonymous=false, required_roles=[\"analyst\", \"admin\"]. Preserving /health for anonymous uptime checks.",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795099748-ye0cx",
+      "run_id": "run-muoh5tm8",
+      "timestamp": "2026-09-30T19:04:59.748Z",
+      "category": "MUTATION",
+      "title": "Applying Safer Least-Privilege Configuration",
+      "description": "Deploying calibrated route authorization rules to perimeter gateway...",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795100450-uxcna",
+      "run_id": "run-muoh5tm8",
+      "timestamp": "2026-09-30T19:05:00.450Z",
+      "category": "PROBE",
+      "title": "Final Dual Verification Protocol",
+      "description": "Running comprehensive suite of Security Attack probes and Application Health probes...",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795101151-aba6s",
+      "run_id": "run-muoh5tm8",
+      "timestamp": "2026-09-30T19:05:01.151Z",
+      "category": "OUTCOME",
+      "title": "Self-Healing Remediation Successful",
+      "description": "Data protected from anonymous access + application workflow verified intact for authorized analysts.",
+      "level": "success",
+      "metadata": {
+        "attempts": 2,
+        "rollback_occurred": true
+      }
+    },
+    {
+      "id": "evt-1790795127523-75ux8",
+      "run_id": "run-muoh6jtv",
+      "timestamp": "2026-09-30T19:05:27.523Z",
+      "category": "SCAN",
+      "title": "Scanning Infrastructure Configuration",
+      "description": "Inspecting perimeter gateway routes and RustFS object storage permissions...",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795128024-o562n",
+      "run_id": "run-muoh6jtv",
+      "timestamp": "2026-09-30T19:05:28.024Z",
+      "category": "EVIDENCE",
+      "title": "Critical Finding Identified: Publicly Accessible Storage Bucket",
+      "description": "Sensitive synthetic records are accessible without authentication because the storage policy allows public read access (public_read: true).",
+      "level": "error"
+    },
+    {
+      "id": "evt-1790795128025-aa1xh",
+      "run_id": "run-muoh6jtv",
+      "timestamp": "2026-09-30T19:05:28.025Z",
+      "category": "RAG",
+      "title": "Retrieved Guidance: Least Privilege Enforcement",
+      "description": "Enforce authenticated access while preserving authorized application roles.",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795128626-u6efg",
+      "run_id": "run-muoh6jtv",
+      "timestamp": "2026-09-30T19:05:28.626Z",
+      "category": "PLAN",
+      "title": "Agent Formulation of Remediation Plan",
+      "description": "Agent formulating least-privilege policy to restrict public access while retaining authorized service principals.",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795128626-dw6x5",
+      "run_id": "run-muoh6jtv",
+      "timestamp": "2026-09-30T19:05:28.626Z",
+      "category": "SNAPSHOT",
+      "title": "Captured Immutable Baseline Snapshot (rev-001)",
+      "description": "State hash: sha256:fc2f395bedc68029. Registered rollback target prior to mutation.",
+      "level": "info",
+      "metadata": {
+        "revision": "rev-001",
+        "hash": "sha256:fc2f395bedc68029"
+      }
+    },
+    {
+      "id": "evt-1790795129127-nsg8x",
+      "run_id": "run-muoh6jtv",
+      "timestamp": "2026-09-30T19:05:29.127Z",
+      "category": "MUTATION",
+      "title": "Applying Storage Bucket Access Policy",
+      "description": "Setting public_read: false on RustFS bucket cloudmend-private-records while maintaining authenticated read for authorized principals.",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795129929-lzfxj",
+      "run_id": "run-muoh6jtv",
+      "timestamp": "2026-09-30T19:05:29.929Z",
+      "category": "PROBE",
+      "title": "Final Dual Verification Protocol",
+      "description": "Running comprehensive suite of Security Attack probes and Application Health probes...",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795130631-1bz7d",
+      "run_id": "run-muoh6jtv",
+      "timestamp": "2026-09-30T19:05:30.631Z",
+      "category": "OUTCOME",
+      "title": "Remediation Verified Successful",
+      "description": "Data protected from anonymous access + application workflow verified intact for authorized analysts.",
+      "level": "success",
+      "metadata": {
+        "attempts": 1,
+        "rollback_occurred": false
+      }
+    },
+    {
+      "id": "evt-1790795165009-7ibz4",
+      "run_id": "run-muoh7cr5",
+      "timestamp": "2026-09-30T19:06:05.009Z",
+      "category": "SCAN",
+      "title": "Scanning Infrastructure Configuration",
+      "description": "Inspecting perimeter gateway routes and RustFS object storage permissions...",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795165512-2qz5x",
+      "run_id": "run-muoh7cr5",
+      "timestamp": "2026-09-30T19:06:05.512Z",
+      "category": "EVIDENCE",
+      "title": "Critical Finding Identified: Publicly Accessible Storage Bucket",
+      "description": "Sensitive synthetic records are accessible without authentication because the storage policy allows public read access (public_read: true).",
+      "level": "error"
+    },
+    {
+      "id": "evt-1790795165512-zw2y1",
+      "run_id": "run-muoh7cr5",
+      "timestamp": "2026-09-30T19:06:05.512Z",
+      "category": "RAG",
+      "title": "Retrieved Guidance: S3 / RustFS Bucket Public Access Block",
+      "description": "Remove anonymous Read/List permissions from bucket policies. Require authenticated service principals with explicit IAM roles.",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795166114-9mbud",
+      "run_id": "run-muoh7cr5",
+      "timestamp": "2026-09-30T19:06:06.114Z",
+      "category": "PLAN",
+      "title": "Agent Formulation of Remediation Plan",
+      "description": "Agent formulating least-privilege policy to restrict public access while retaining authorized service principals.",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795166115-lg2i6",
+      "run_id": "run-muoh7cr5",
+      "timestamp": "2026-09-30T19:06:06.115Z",
+      "category": "SNAPSHOT",
+      "title": "Captured Immutable Baseline Snapshot (rev-001)",
+      "description": "State hash: sha256:fc2f395bedc68029. Registered rollback target prior to mutation.",
+      "level": "info",
+      "metadata": {
+        "revision": "rev-001",
+        "hash": "sha256:fc2f395bedc68029"
+      }
+    },
+    {
+      "id": "evt-1790795166616-fy44q",
+      "run_id": "run-muoh7cr5",
+      "timestamp": "2026-09-30T19:06:06.616Z",
+      "category": "MUTATION",
+      "title": "Applying Storage Bucket Access Policy",
+      "description": "Setting public_read: false on RustFS bucket cloudmend-private-records while maintaining authenticated read for authorized principals.",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795167418-m2oxi",
+      "run_id": "run-muoh7cr5",
+      "timestamp": "2026-09-30T19:06:07.418Z",
+      "category": "PROBE",
+      "title": "Final Dual Verification Protocol",
+      "description": "Running comprehensive suite of Security Attack probes and Application Health probes...",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795168120-1jafe",
+      "run_id": "run-muoh7cr5",
+      "timestamp": "2026-09-30T19:06:08.120Z",
+      "category": "OUTCOME",
+      "title": "Remediation Verified Successful",
+      "description": "Data protected from anonymous access + application workflow verified intact for authorized analysts.",
+      "level": "success",
+      "metadata": {
+        "attempts": 1,
+        "rollback_occurred": false
+      }
+    },
+    {
+      "id": "evt-1790795168122-padeq",
+      "run_id": "run-muoh7f5m",
+      "timestamp": "2026-09-30T19:06:08.122Z",
+      "category": "SCAN",
+      "title": "Scanning Infrastructure Configuration",
+      "description": "Inspecting perimeter gateway routes and RustFS object storage permissions...",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795168624-x9tvk",
+      "run_id": "run-muoh7f5m",
+      "timestamp": "2026-09-30T19:06:08.624Z",
+      "category": "EVIDENCE",
+      "title": "Critical Finding Identified: Unauthenticated API Route Exposure",
+      "description": "Perimeter gateway route /api/records has allow_anonymous=true. Anonymous requests retrieve patient diagnosis data.",
+      "level": "error"
+    },
+    {
+      "id": "evt-1790795168624-168dl",
+      "run_id": "run-muoh7f5m",
+      "timestamp": "2026-09-30T19:06:08.624Z",
+      "category": "RAG",
+      "title": "Retrieved Guidance: Perimeter API Gateway Authentication Enforcement",
+      "description": "Configure gateway authorizers to require valid JWT/Bearer credentials. Return HTTP 401 Unauthorized for missing tokens.",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795169225-6z5gh",
+      "run_id": "run-muoh7f5m",
+      "timestamp": "2026-09-30T19:06:09.225Z",
+      "category": "PLAN",
+      "title": "Agent Formulation of Remediation Plan",
+      "description": "Agent preparing candidate policy. Testing perimeter access restriction on Apex Medical gateway.",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795169226-8ijqp",
+      "run_id": "run-muoh7f5m",
+      "timestamp": "2026-09-30T19:06:09.226Z",
+      "category": "SNAPSHOT",
+      "title": "Captured Immutable Baseline Snapshot (rev-002)",
+      "description": "State hash: sha256:6910e44e40c9f79d. Registered rollback target prior to mutation.",
+      "level": "info",
+      "metadata": {
+        "revision": "rev-002",
+        "hash": "sha256:6910e44e40c9f79d"
+      }
+    },
+    {
+      "id": "evt-1790795169727-bm8p8",
+      "run_id": "run-muoh7f5m",
+      "timestamp": "2026-09-30T19:06:09.727Z",
+      "category": "MUTATION",
+      "title": "Applying Candidate Policy 1: Blanket Route Restriction",
+      "description": "Enforcing emergency perimeter deny rule on /api/records to immediately seal exposure.",
+      "level": "warning"
+    },
+    {
+      "id": "evt-1790795170429-1g8zn",
+      "run_id": "run-muoh7f5m",
+      "timestamp": "2026-09-30T19:06:10.429Z",
+      "category": "PROBE",
+      "title": "Executing Dual Verification Protocol (Candidate 1)",
+      "description": "Running independent Security attack probes and Application workflow probes concurrently...",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795171131-z2msc",
+      "run_id": "run-muoh7f5m",
+      "timestamp": "2026-09-30T19:06:11.131Z",
+      "category": "PROBE",
+      "title": "Security Probe Result: PASS (Anonymous Blocked)",
+      "description": "Anonymous caller received HTTP 403 Forbidden. Attack vector is closed.",
+      "level": "success"
+    },
+    {
+      "id": "evt-1790795171132-u9uph",
+      "run_id": "run-muoh7f5m",
+      "timestamp": "2026-09-30T19:06:11.132Z",
+      "category": "PROBE",
+      "title": "Application Probe Result: FAIL (Analyst Blocked)",
+      "description": "CRITICAL: Legitimate Security Analyst was blocked with HTTP 403! Clinical records workflow broken.",
+      "level": "error"
+    },
+    {
+      "id": "evt-1790795171132-ujtou",
+      "run_id": "run-muoh7f5m",
+      "timestamp": "2026-09-30T19:06:11.132Z",
+      "category": "REGRESSION",
+      "title": "Application Workflow Regression Detected!",
+      "description": "Candidate policy closed security exposure but broke legitimate Security Analyst workflow (HTTP 403 on /api/records).",
+      "level": "error"
+    },
+    {
+      "id": "evt-1790795171933-50pu7",
+      "run_id": "run-muoh7f5m",
+      "timestamp": "2026-09-30T19:06:11.933Z",
+      "category": "ROLLBACK",
+      "title": "Triggering Automated Rollback to Snapshot rev-002",
+      "description": "Restoring baseline configuration hash sha256:6910e44e40c9f79d...",
+      "level": "warning"
+    },
+    {
+      "id": "evt-1790795173150-4xs7f",
+      "run_id": "run-muoh7f5m",
+      "timestamp": "2026-09-30T19:06:13.150Z",
+      "category": "REFLECTION",
+      "title": "Agent Reflection & Root Cause Analysis",
+      "description": "Candidate policy was overly restrictive: blanket denial on /api/records severed authorized analyst access. Replanning with fine-grained role-based authorizer granting analyst and admin identities while rejecting anonymous requests.",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795173952-zdk5z",
+      "run_id": "run-muoh7f5m",
+      "timestamp": "2026-09-30T19:06:13.952Z",
+      "category": "REPLAN",
+      "title": "Synthesizing Least-Privilege Policy (Candidate 2)",
+      "description": "Configuring gateway authorizer: allow_anonymous=false, required_roles=[\"analyst\", \"admin\"]. Preserving /health for anonymous uptime checks.",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795174553-z7hfq",
+      "run_id": "run-muoh7f5m",
+      "timestamp": "2026-09-30T19:06:14.553Z",
+      "category": "MUTATION",
+      "title": "Applying Safer Least-Privilege Configuration",
+      "description": "Deploying calibrated route authorization rules to perimeter gateway...",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795175255-kh7ei",
+      "run_id": "run-muoh7f5m",
+      "timestamp": "2026-09-30T19:06:15.255Z",
+      "category": "PROBE",
+      "title": "Final Dual Verification Protocol",
+      "description": "Running comprehensive suite of Security Attack probes and Application Health probes...",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795175957-2ameo",
+      "run_id": "run-muoh7f5m",
+      "timestamp": "2026-09-30T19:06:15.957Z",
+      "category": "OUTCOME",
+      "title": "Self-Healing Remediation Successful",
+      "description": "Data protected from anonymous access + application workflow verified intact for authorized analysts.",
+      "level": "success",
+      "metadata": {
+        "attempts": 2,
+        "rollback_occurred": true
+      }
+    },
+    {
+      "id": "evt-1790795207594-hi3ft",
+      "run_id": "run-muoh89m2",
+      "timestamp": "2026-09-30T19:06:47.594Z",
+      "category": "SCAN",
+      "title": "Scanning Infrastructure Configuration",
+      "description": "Inspecting perimeter gateway routes and RustFS object storage permissions...",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795208096-deens",
+      "run_id": "run-muoh89m2",
+      "timestamp": "2026-09-30T19:06:48.096Z",
+      "category": "EVIDENCE",
+      "title": "Critical Finding Identified: Publicly Accessible Storage Bucket",
+      "description": "Sensitive synthetic records are accessible without authentication because the storage policy allows public read access (public_read: true).",
+      "level": "error"
+    },
+    {
+      "id": "evt-1790795208096-qu4py",
+      "run_id": "run-muoh89m2",
+      "timestamp": "2026-09-30T19:06:48.096Z",
+      "category": "RAG",
+      "title": "Retrieved Guidance: S3 / RustFS Bucket Public Access Block",
+      "description": "Remove anonymous Read/List permissions from bucket policies. Require authenticated service principals with explicit IAM roles.",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795208698-o5p4i",
+      "run_id": "run-muoh89m2",
+      "timestamp": "2026-09-30T19:06:48.698Z",
+      "category": "PLAN",
+      "title": "Agent Formulation of Remediation Plan",
+      "description": "Agent formulating least-privilege policy to restrict public access while retaining authorized service principals.",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795208699-7uxel",
+      "run_id": "run-muoh89m2",
+      "timestamp": "2026-09-30T19:06:48.699Z",
+      "category": "SNAPSHOT",
+      "title": "Captured Immutable Baseline Snapshot (rev-001)",
+      "description": "State hash: sha256:fc2f395bedc68029. Registered rollback target prior to mutation.",
+      "level": "info",
+      "metadata": {
+        "revision": "rev-001",
+        "hash": "sha256:fc2f395bedc68029"
+      }
+    },
+    {
+      "id": "evt-1790795209200-znvky",
+      "run_id": "run-muoh89m2",
+      "timestamp": "2026-09-30T19:06:49.200Z",
+      "category": "MUTATION",
+      "title": "Applying Storage Bucket Access Policy",
+      "description": "Setting public_read: false on RustFS bucket cloudmend-private-records while maintaining authenticated read for authorized principals.",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795210003-mphff",
+      "run_id": "run-muoh89m2",
+      "timestamp": "2026-09-30T19:06:50.003Z",
+      "category": "PROBE",
+      "title": "Final Dual Verification Protocol",
+      "description": "Running comprehensive suite of Security Attack probes and Application Health probes...",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795210705-7pnxr",
+      "run_id": "run-muoh89m2",
+      "timestamp": "2026-09-30T19:06:50.705Z",
+      "category": "OUTCOME",
+      "title": "Remediation Verified Successful",
+      "description": "Data protected from anonymous access + application workflow verified intact for authorized analysts.",
+      "level": "success",
+      "metadata": {
+        "attempts": 1,
+        "rollback_occurred": false
+      }
+    },
+    {
+      "id": "evt-1790795210708-nab50",
+      "run_id": "run-muoh8c0k",
+      "timestamp": "2026-09-30T19:06:50.708Z",
+      "category": "SCAN",
+      "title": "Scanning Infrastructure Configuration",
+      "description": "Inspecting perimeter gateway routes and RustFS object storage permissions...",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795211210-iyojb",
+      "run_id": "run-muoh8c0k",
+      "timestamp": "2026-09-30T19:06:51.210Z",
+      "category": "EVIDENCE",
+      "title": "Critical Finding Identified: Unauthenticated API Route Exposure",
+      "description": "Perimeter gateway route /api/records has allow_anonymous=true. Anonymous requests retrieve patient diagnosis data.",
+      "level": "error"
+    },
+    {
+      "id": "evt-1790795211211-s9ub6",
+      "run_id": "run-muoh8c0k",
+      "timestamp": "2026-09-30T19:06:51.211Z",
+      "category": "RAG",
+      "title": "Retrieved Guidance: Perimeter API Gateway Authentication Enforcement",
+      "description": "Configure gateway authorizers to require valid JWT/Bearer credentials. Return HTTP 401 Unauthorized for missing tokens.",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795211812-0kbqr",
+      "run_id": "run-muoh8c0k",
+      "timestamp": "2026-09-30T19:06:51.812Z",
+      "category": "PLAN",
+      "title": "Agent Formulation of Remediation Plan",
+      "description": "Agent preparing candidate policy. Testing perimeter access restriction on Apex Medical gateway.",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795211813-arzju",
+      "run_id": "run-muoh8c0k",
+      "timestamp": "2026-09-30T19:06:51.813Z",
+      "category": "SNAPSHOT",
+      "title": "Captured Immutable Baseline Snapshot (rev-002)",
+      "description": "State hash: sha256:6910e44e40c9f79d. Registered rollback target prior to mutation.",
+      "level": "info",
+      "metadata": {
+        "revision": "rev-002",
+        "hash": "sha256:6910e44e40c9f79d"
+      }
+    },
+    {
+      "id": "evt-1790795212314-3ak9k",
+      "run_id": "run-muoh8c0k",
+      "timestamp": "2026-09-30T19:06:52.314Z",
+      "category": "MUTATION",
+      "title": "Applying Candidate Policy 1: Blanket Route Restriction",
+      "description": "Enforcing emergency perimeter deny rule on /api/records to immediately seal exposure.",
+      "level": "warning"
+    },
+    {
+      "id": "evt-1790795213016-n9lnq",
+      "run_id": "run-muoh8c0k",
+      "timestamp": "2026-09-30T19:06:53.016Z",
+      "category": "PROBE",
+      "title": "Executing Dual Verification Protocol (Candidate 1)",
+      "description": "Running independent Security attack probes and Application workflow probes concurrently...",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795213718-0ijn8",
+      "run_id": "run-muoh8c0k",
+      "timestamp": "2026-09-30T19:06:53.718Z",
+      "category": "PROBE",
+      "title": "Security Probe Result: PASS (Anonymous Blocked)",
+      "description": "Anonymous caller received HTTP 403 Forbidden. Attack vector is closed.",
+      "level": "success"
+    },
+    {
+      "id": "evt-1790795213719-dld39",
+      "run_id": "run-muoh8c0k",
+      "timestamp": "2026-09-30T19:06:53.719Z",
+      "category": "PROBE",
+      "title": "Application Probe Result: FAIL (Analyst Blocked)",
+      "description": "CRITICAL: Legitimate Security Analyst was blocked with HTTP 403! Clinical records workflow broken.",
+      "level": "error"
+    },
+    {
+      "id": "evt-1790795213720-ua2ci",
+      "run_id": "run-muoh8c0k",
+      "timestamp": "2026-09-30T19:06:53.720Z",
+      "category": "REGRESSION",
+      "title": "Application Workflow Regression Detected!",
+      "description": "Candidate policy closed security exposure but broke legitimate Security Analyst workflow (HTTP 403 on /api/records).",
+      "level": "error"
+    },
+    {
+      "id": "evt-1790795214522-c0y28",
+      "run_id": "run-muoh8c0k",
+      "timestamp": "2026-09-30T19:06:54.522Z",
+      "category": "ROLLBACK",
+      "title": "Triggering Automated Rollback to Snapshot rev-002",
+      "description": "Restoring baseline configuration hash sha256:6910e44e40c9f79d...",
+      "level": "warning"
+    },
+    {
+      "id": "evt-1790795217079-ljl0i",
+      "run_id": "run-muoh8c0k",
+      "timestamp": "2026-09-30T19:06:57.079Z",
+      "category": "REFLECTION",
+      "title": "Agent Reflection & Root Cause Analysis",
+      "description": "Candidate policy was overly restrictive: blanket denial on /api/records severed authorized analyst access. Replanning with fine-grained role-based authorizer granting analyst and admin identities while rejecting anonymous requests.",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795217880-27w04",
+      "run_id": "run-muoh8c0k",
+      "timestamp": "2026-09-30T19:06:57.880Z",
+      "category": "REPLAN",
+      "title": "Synthesizing Least-Privilege Policy (Candidate 2)",
+      "description": "Configuring gateway authorizer: allow_anonymous=false, required_roles=[\"analyst\", \"admin\"]. Preserving /health for anonymous uptime checks.",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795218481-0mtev",
+      "run_id": "run-muoh8c0k",
+      "timestamp": "2026-09-30T19:06:58.481Z",
+      "category": "MUTATION",
+      "title": "Applying Safer Least-Privilege Configuration",
+      "description": "Deploying calibrated route authorization rules to perimeter gateway...",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795219184-k8sal",
+      "run_id": "run-muoh8c0k",
+      "timestamp": "2026-09-30T19:06:59.184Z",
+      "category": "PROBE",
+      "title": "Final Dual Verification Protocol",
+      "description": "Running comprehensive suite of Security Attack probes and Application Health probes...",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795219885-yr79t",
+      "run_id": "run-muoh8c0k",
+      "timestamp": "2026-09-30T19:06:59.885Z",
+      "category": "OUTCOME",
+      "title": "Self-Healing Remediation Successful",
+      "description": "Data protected from anonymous access + application workflow verified intact for authorized analysts.",
+      "level": "success",
+      "metadata": {
+        "attempts": 2,
+        "rollback_occurred": true
+      }
+    },
+    {
+      "id": "evt-1790795399633-vr8rd",
+      "run_id": "scan-muohcdsh",
+      "timestamp": "2026-09-30T19:09:59.633Z",
+      "category": "SCAN",
+      "title": "Cloud Security Scan Initiated",
+      "description": "Executing inspection probes on Apex Medical perimeter gateway and RustFS object storage...",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795400235-raotq",
+      "run_id": "scan-muohcdsh",
+      "timestamp": "2026-09-30T19:10:00.235Z",
+      "category": "EVIDENCE",
+      "title": "Vulnerability Detected: Unauthenticated API Route Exposure",
+      "description": "Perimeter gateway route /api/records has allow_anonymous=true. Anonymous requests retrieve patient diagnosis data.",
+      "level": "error",
+      "metadata": {
+        "severity": "CRITICAL",
+        "resource": "Apex Medical Patient Portal Gateway"
+      }
+    },
+    {
+      "id": "evt-1790795400236-ggwlx",
+      "run_id": "scan-muohcdsh",
+      "timestamp": "2026-09-30T19:10:00.236Z",
+      "category": "RAG",
+      "title": "Retrieved Security Best Practice (CIS-STORAGE-01)",
+      "description": "Private and confidential patient data buckets must have public read/write access explicitly denied at all times.",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795474578-krzrw",
+      "run_id": "run-muohdzma",
+      "timestamp": "2026-09-30T19:11:14.578Z",
+      "category": "SCAN",
+      "title": "Scanning Infrastructure Configuration",
+      "description": "Inspecting perimeter gateway routes and RustFS object storage permissions...",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795475082-elsju",
+      "run_id": "run-muohdzma",
+      "timestamp": "2026-09-30T19:11:15.082Z",
+      "category": "EVIDENCE",
+      "title": "Critical Finding Identified: Publicly Accessible Storage Bucket",
+      "description": "Sensitive synthetic records are accessible without authentication because the storage policy allows public read access (public_read: true).",
+      "level": "error"
+    },
+    {
+      "id": "evt-1790795475083-9x4xr",
+      "run_id": "run-muohdzma",
+      "timestamp": "2026-09-30T19:11:15.083Z",
+      "category": "RAG",
+      "title": "Retrieved Guidance: S3 / RustFS Bucket Public Access Block",
+      "description": "Remove anonymous Read/List permissions from bucket policies. Require authenticated service principals with explicit IAM roles.",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795475684-1i4y6",
+      "run_id": "run-muohdzma",
+      "timestamp": "2026-09-30T19:11:15.684Z",
+      "category": "PLAN",
+      "title": "Agent Formulation of Remediation Plan",
+      "description": "Agent formulating least-privilege policy to restrict public access while retaining authorized service principals.",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795475685-apu8s",
+      "run_id": "run-muohdzma",
+      "timestamp": "2026-09-30T19:11:15.685Z",
+      "category": "SNAPSHOT",
+      "title": "Captured Immutable Baseline Snapshot (rev-001)",
+      "description": "State hash: sha256:fc2f395bedc68029. Registered rollback target prior to mutation.",
+      "level": "info",
+      "metadata": {
+        "revision": "rev-001",
+        "hash": "sha256:fc2f395bedc68029"
+      }
+    },
+    {
+      "id": "evt-1790795476186-148p2",
+      "run_id": "run-muohdzma",
+      "timestamp": "2026-09-30T19:11:16.186Z",
+      "category": "MUTATION",
+      "title": "Applying Storage Bucket Access Policy",
+      "description": "Setting public_read: false on RustFS bucket cloudmend-private-records while maintaining authenticated read for authorized principals.",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795476988-gxutv",
+      "run_id": "run-muohdzma",
+      "timestamp": "2026-09-30T19:11:16.988Z",
+      "category": "PROBE",
+      "title": "Final Dual Verification Protocol",
+      "description": "Running comprehensive suite of Security Attack probes and Application Health probes...",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795477690-1akh5",
+      "run_id": "run-muohdzma",
+      "timestamp": "2026-09-30T19:11:17.690Z",
+      "category": "OUTCOME",
+      "title": "Remediation Verified Successful",
+      "description": "Data protected from anonymous access + application workflow verified intact for authorized analysts.",
+      "level": "success",
+      "metadata": {
+        "attempts": 1,
+        "rollback_occurred": false
+      }
+    },
+    {
+      "id": "evt-1790795477693-gcjsp",
+      "run_id": "run-muohe20t",
+      "timestamp": "2026-09-30T19:11:17.693Z",
+      "category": "SCAN",
+      "title": "Scanning Infrastructure Configuration",
+      "description": "Inspecting perimeter gateway routes and RustFS object storage permissions...",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795478195-4bhaq",
+      "run_id": "run-muohe20t",
+      "timestamp": "2026-09-30T19:11:18.195Z",
+      "category": "EVIDENCE",
+      "title": "Critical Finding Identified: Unauthenticated API Route Exposure",
+      "description": "Perimeter gateway route /api/records has allow_anonymous=true. Anonymous requests retrieve patient diagnosis data.",
+      "level": "error"
+    },
+    {
+      "id": "evt-1790795478196-ycmhb",
+      "run_id": "run-muohe20t",
+      "timestamp": "2026-09-30T19:11:18.196Z",
+      "category": "RAG",
+      "title": "Retrieved Guidance: Perimeter API Gateway Authentication Enforcement",
+      "description": "Configure gateway authorizers to require valid JWT/Bearer credentials. Return HTTP 401 Unauthorized for missing tokens.",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795478798-elrpf",
+      "run_id": "run-muohe20t",
+      "timestamp": "2026-09-30T19:11:18.798Z",
+      "category": "PLAN",
+      "title": "Agent Formulation of Remediation Plan",
+      "description": "Agent preparing candidate policy. Testing perimeter access restriction on Apex Medical gateway.",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795478800-uv5uv",
+      "run_id": "run-muohe20t",
+      "timestamp": "2026-09-30T19:11:18.800Z",
+      "category": "SNAPSHOT",
+      "title": "Captured Immutable Baseline Snapshot (rev-002)",
+      "description": "State hash: sha256:6910e44e40c9f79d. Registered rollback target prior to mutation.",
+      "level": "info",
+      "metadata": {
+        "revision": "rev-002",
+        "hash": "sha256:6910e44e40c9f79d"
+      }
+    },
+    {
+      "id": "evt-1790795479302-b8lre",
+      "run_id": "run-muohe20t",
+      "timestamp": "2026-09-30T19:11:19.302Z",
+      "category": "MUTATION",
+      "title": "Applying Candidate Policy 1: Blanket Route Restriction",
+      "description": "Enforcing emergency perimeter deny rule on /api/records to immediately seal exposure.",
+      "level": "warning"
+    },
+    {
+      "id": "evt-1790795480004-pdmsi",
+      "run_id": "run-muohe20t",
+      "timestamp": "2026-09-30T19:11:20.004Z",
+      "category": "PROBE",
+      "title": "Executing Dual Verification Protocol (Candidate 1)",
+      "description": "Running independent Security attack probes and Application workflow probes concurrently...",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795480706-7m6vy",
+      "run_id": "run-muohe20t",
+      "timestamp": "2026-09-30T19:11:20.706Z",
+      "category": "PROBE",
+      "title": "Security Probe Result: PASS (Anonymous Blocked)",
+      "description": "Anonymous caller received HTTP 403 Forbidden. Attack vector is closed.",
+      "level": "success"
+    },
+    {
+      "id": "evt-1790795480707-4yna2",
+      "run_id": "run-muohe20t",
+      "timestamp": "2026-09-30T19:11:20.707Z",
+      "category": "PROBE",
+      "title": "Application Probe Result: FAIL (Analyst Blocked)",
+      "description": "CRITICAL: Legitimate Security Analyst was blocked with HTTP 403! Clinical records workflow broken.",
+      "level": "error"
+    },
+    {
+      "id": "evt-1790795480708-q3oia",
+      "run_id": "run-muohe20t",
+      "timestamp": "2026-09-30T19:11:20.708Z",
+      "category": "REGRESSION",
+      "title": "Application Workflow Regression Detected!",
+      "description": "Candidate policy closed security exposure but broke legitimate Security Analyst workflow (HTTP 403 on /api/records).",
+      "level": "error"
+    },
+    {
+      "id": "evt-1790795481510-giehn",
+      "run_id": "run-muohe20t",
+      "timestamp": "2026-09-30T19:11:21.510Z",
+      "category": "ROLLBACK",
+      "title": "Triggering Automated Rollback to Snapshot rev-002",
+      "description": "Restoring baseline configuration hash sha256:6910e44e40c9f79d...",
+      "level": "warning"
+    },
+    {
+      "id": "evt-1790795482948-mkq2v",
+      "run_id": "run-muohe20t",
+      "timestamp": "2026-09-30T19:11:22.948Z",
+      "category": "REFLECTION",
+      "title": "Agent Reflection & Root Cause Analysis",
+      "description": "Candidate policy was overly restrictive: blanket denial on /api/records severed authorized analyst access. Replanning with fine-grained role-based authorizer granting analyst and admin identities while rejecting anonymous requests.",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795483752-vd6rd",
+      "run_id": "run-muohe20t",
+      "timestamp": "2026-09-30T19:11:23.752Z",
+      "category": "REPLAN",
+      "title": "Synthesizing Least-Privilege Policy (Candidate 2)",
+      "description": "Configuring gateway authorizer: allow_anonymous=false, required_roles=[\"analyst\", \"admin\"]. Preserving /health for anonymous uptime checks.",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795484354-kkyjg",
+      "run_id": "run-muohe20t",
+      "timestamp": "2026-09-30T19:11:24.354Z",
+      "category": "MUTATION",
+      "title": "Applying Safer Least-Privilege Configuration",
+      "description": "Deploying calibrated route authorization rules to perimeter gateway...",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795485056-491hr",
+      "run_id": "run-muohe20t",
+      "timestamp": "2026-09-30T19:11:25.056Z",
+      "category": "PROBE",
+      "title": "Final Dual Verification Protocol",
+      "description": "Running comprehensive suite of Security Attack probes and Application Health probes...",
+      "level": "info"
+    },
+    {
+      "id": "evt-1790795485759-cvjoj",
+      "run_id": "run-muohe20t",
+      "timestamp": "2026-09-30T19:11:25.759Z",
+      "category": "OUTCOME",
+      "title": "Self-Healing Remediation Successful",
+      "description": "Data protected from anonymous access + application workflow verified intact for authorized analysts.",
+      "level": "success",
+      "metadata": {
+        "attempts": 2,
+        "rollback_occurred": true
+      }
+    }
+  ]
+}

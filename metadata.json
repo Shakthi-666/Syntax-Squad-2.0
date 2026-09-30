@@ -1,0 +1,6 @@
+{
+  "name": "CloudMend",
+  "description": "An autonomous AI security agent that fixes cloud misconfigurations while ensuring application functionality and preventing regressions.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
