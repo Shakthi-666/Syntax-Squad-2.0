@@ -13,6 +13,8 @@ import {
   isGeminiAvailable
 } from './src/server/agent';
 import { CloudMendDB } from './src/server/db';
+import { sqlite } from './src/server/sqlite';
+import { telemetryService } from './src/server/telemetry';
 import { ReadinessResponse, StatusResponse } from './src/types';
 
 dotenv.config();
@@ -115,6 +117,7 @@ app.post('/api/stop', (req, res) => {
 app.post('/api/fault/load', (req, res) => {
   const scenarioId = parseInt(req.body.scenario, 10) || 3;
   const config = sandbox.loadScenario(scenarioId);
+  telemetryService.reset();
   const status = SafeTools.get_application_status();
   res.json({
     success: true,
@@ -127,6 +130,7 @@ app.post('/api/fault/load', (req, res) => {
 app.post('/api/sandbox/reset', (req, res) => {
   const scenarioId = req.body?.scenario ? parseInt(req.body.scenario, 10) : 3;
   const config = sandbox.reset(scenarioId);
+  telemetryService.reset();
   const status = SafeTools.get_application_status();
   res.json({
     success: true,
@@ -277,6 +281,52 @@ app.get('/api/export-audit', (req, res) => {
 });
 
 // ----------------------------------------------------
+// TELEMETRY & DATABASE APIS
+// ----------------------------------------------------
+
+app.get('/api/telemetry/latest', (req, res) => {
+  res.json(telemetryService.getLatestMetrics());
+});
+
+app.get('/api/telemetry/history', (req, res) => {
+  const metric = req.query.metric as string | undefined;
+  const resource = req.query.resource as string | undefined;
+  const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 30;
+  res.json(telemetryService.getHistory(metric, resource, limit));
+});
+
+app.get('/api/telemetry/resource/:resourceId', (req, res) => {
+  const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 30;
+  res.json(telemetryService.getHistory(undefined, req.params.resourceId, limit));
+});
+
+app.get('/api/telemetry/summary', (req, res) => {
+  res.json(telemetryService.getAggregatedMetrics());
+});
+
+app.get('/api/security-events', (req, res) => {
+  const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 50;
+  res.json(sqlite.getSecurityEvents(limit));
+});
+
+app.get('/api/resources', (req, res) => {
+  res.json(sqlite.getResources());
+});
+
+app.get('/api/synthetic-records', (req, res) => {
+  res.json(sqlite.getSyntheticRecords());
+});
+
+app.get('/api/database/status', (req, res) => {
+  res.json(sqlite.getStatus());
+});
+
+app.get('/api/database/sample/:table', (req, res) => {
+  const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 25;
+  res.json(sqlite.getTableSample(req.params.table, limit));
+});
+
+// ----------------------------------------------------
 // 5. DIRECT SYNTHETIC RESOURCE ENDPOINTS
 // ----------------------------------------------------
 
@@ -337,8 +387,18 @@ async function startServer() {
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`CloudMend Server running on http://0.0.0.0:${PORT}`);
+    telemetryService.start();
   });
 }
+
+process.on('SIGTERM', () => {
+  telemetryService.stop();
+});
+
+process.on('SIGINT', () => {
+  telemetryService.stop();
+  process.exit(0);
+});
 
 startServer().catch(err => {
   console.error('Fatal startup error in CloudMend:', err);

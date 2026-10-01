@@ -10,7 +10,9 @@
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "test": "tsx test/cloudmend.test.ts"
+    "test": "tsx test/cloudmend.test.ts",
+    "db:inspect": "tsx scripts/db_inspect.ts",
+    "db:reset": "tsx scripts/db_reset.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

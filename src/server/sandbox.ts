@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { sqlite } from './sqlite';
 import {
   SandboxConfig,
   Snapshot,
@@ -6,50 +7,14 @@ import {
   ProbeResult,
   SecurityFinding
 } from '../types';
+import {
+  SYNTHETIC_PATIENT_RECORDS,
+  SYNTHETIC_IDENTITIES,
+  SyntheticIdentity
+} from '../constants';
 
-// Deterministic synthetic patient records (strictly fictional, HIPAA compliance demo)
-export const SYNTHETIC_PATIENT_RECORDS: Record<string, SyntheticPatientRecord> = {
-  'SYN-REC-1001.json': {
-    id: 'SYN-REC-1001',
-    patient: 'Eleanor Vance',
-    diagnosis: 'Type 2 Diabetes',
-    ssn: '***-**-4910',
-    dob: '1964-08-14',
-    department: 'Endocrinology',
-    classification: 'CONFIDENTIAL_HIPAA'
-  },
-  'SYN-REC-1002.json': {
-    id: 'SYN-REC-1002',
-    patient: 'Marcus Holloway',
-    diagnosis: 'Moderate Persistent Asthma',
-    ssn: '***-**-8201',
-    dob: '1988-11-20',
-    department: 'Pulmonology',
-    classification: 'CONFIDENTIAL_HIPAA'
-  },
-  'SYN-REC-1003.json': {
-    id: 'SYN-REC-1003',
-    patient: 'Chloe Decker',
-    diagnosis: 'Hypertension Stage 1',
-    ssn: '***-**-3341',
-    dob: '1981-03-05',
-    department: 'Cardiology',
-    classification: 'CONFIDENTIAL_HIPAA'
-  }
-};
-
-export interface SyntheticIdentity {
-  name: string;
-  token: string | null;
-  role: string | null;
-}
-
-export const SYNTHETIC_IDENTITIES: Record<string, SyntheticIdentity> = {
-  ANONYMOUS: { name: 'Anonymous', token: null, role: null },
-  INVALID: { name: 'Invalid Token', token: 'token-invalid-99', role: null },
-  ANALYST: { name: 'Security Analyst', token: 'token-analyst-449', role: 'analyst' },
-  ADMIN: { name: 'Administrator', token: 'token-admin-901', role: 'admin' }
-};
+export { SYNTHETIC_PATIENT_RECORDS, SYNTHETIC_IDENTITIES };
+export type { SyntheticIdentity };
 
 export const SCENARIO_DEFINITIONS = [
   {
@@ -193,6 +158,10 @@ class SandboxEnvironment {
     this.currentConfig = JSON.parse(JSON.stringify(scenario.initialConfig));
     this.snapshots.clear();
     this.revisionCounter = 0;
+    const serialized = JSON.stringify(this.currentConfig);
+    const hash = 'sha256:' + crypto.createHash('sha256').update(serialized).digest('hex').substring(0, 16);
+    sqlite.saveConfiguration('cloudmend-gateway', 'gateway_policy', serialized, 'rev-000', hash);
+    sqlite.saveConfiguration('cloudmend-private-records', 'storage_policy', JSON.stringify(this.currentConfig.storage), 'rev-000', hash);
     return this.getConfig();
   }
 
@@ -217,6 +186,7 @@ class SandboxEnvironment {
     };
 
     this.snapshots.set(revId, snapshot);
+    sqlite.insertSnapshot(snapshot);
     return snapshot;
   }
 
@@ -230,6 +200,9 @@ class SandboxEnvironment {
       throw new Error(`Snapshot revision ${revision} not found`);
     }
     this.currentConfig = JSON.parse(JSON.stringify(snapshot.config));
+    const serialized = JSON.stringify(this.currentConfig);
+    const hash = 'sha256:' + crypto.createHash('sha256').update(serialized).digest('hex').substring(0, 16);
+    sqlite.saveConfiguration('cloudmend-gateway', 'gateway_policy', serialized, revision + '-restored', hash);
     return { success: true, config: this.getConfig() };
   }
 
@@ -239,6 +212,9 @@ class SandboxEnvironment {
       ...this.currentConfig.storage,
       ...policy
     };
+    const serialized = JSON.stringify(this.currentConfig.storage);
+    const hash = 'sha256:' + crypto.createHash('sha256').update(serialized).digest('hex').substring(0, 16);
+    sqlite.saveConfiguration('cloudmend-private-records', 'storage_policy', serialized, `rev-${String(this.revisionCounter).padStart(3, '0')}`, hash);
     return this.getConfig();
   }
 
@@ -247,6 +223,9 @@ class SandboxEnvironment {
       ...this.currentConfig.gateway,
       ...policy
     };
+    const serialized = JSON.stringify(this.currentConfig.gateway);
+    const hash = 'sha256:' + crypto.createHash('sha256').update(serialized).digest('hex').substring(0, 16);
+    sqlite.saveConfiguration('cloudmend-gateway', 'gateway_policy', serialized, `rev-${String(this.revisionCounter).padStart(3, '0')}`, hash);
     return this.getConfig();
   }
 
@@ -256,29 +235,21 @@ class SandboxEnvironment {
     const recordsRoute = this.currentConfig.gateway.routes.find(r => r.path === '/api/records');
     const isGatewayAnonymous = recordsRoute ? recordsRoute.allow_anonymous : false;
 
+    let finding: SecurityFinding | null = null;
     if (isStoragePublic && isGatewayAnonymous) {
-      return {
-        id: 'FINDING-COMBINED-05',
-        resource: 'RustFS Bucket + Apex Gateway',
-        vulnerability: 'Unrestricted Public Access to Patient Health Records',
+      finding = {
+        id: 'FINDING-COMBINED-01',
+        resource: 'Perimeter Gateway & RustFS Storage',
+        vulnerability: 'Simultaneous Public Storage & Unauthenticated Route',
         severity: 'CRITICAL',
-        evidence: 'Anonymous GET on /api/records returned HTTP 200 with 3 confidential patient records. Direct RustFS S3 bucket allows anonymous read.',
-        affected_endpoint: '/api/records & s3://cloudmend-private-records/*',
-        current_configuration: JSON.stringify(
-          {
-            bucket_public_read: true,
-            gateway_allow_anonymous: true
-          },
-          null,
-          2
-        ),
-        recommended_remediation: 'Enable Perimeter Gateway Bearer token validation and set bucket public_read=false with least-privilege principal roles.',
-        security_impact: 'Immediate public exposure of HIPAA-protected confidential electronic medical charts and patient PII.'
+        evidence: 'Public read enabled on cloudmend-private-records AND /api/records allows anonymous requests.',
+        affected_endpoint: '/api/records',
+        current_configuration: JSON.stringify(this.currentConfig, null, 2),
+        security_impact: 'Total perimeter failure: unauthenticated actors can directly download entire patient database.',
+        recommended_remediation: 'Disable public_read on storage bucket and configure Bearer authorizer with least privilege roles.'
       };
-    }
-
-    if (isStoragePublic) {
-      return {
+    } else if (isStoragePublic) {
+      finding = {
         id: 'FINDING-STORAGE-02',
         resource: 'cloudmend-private-records (RustFS)',
         vulnerability: 'Publicly Accessible Storage Bucket',
@@ -286,13 +257,11 @@ class SandboxEnvironment {
         evidence: 'Sensitive synthetic records are accessible without authentication because the storage policy allows public read access (public_read: true).',
         affected_endpoint: 's3://cloudmend-private-records/patient-records/*',
         current_configuration: JSON.stringify(this.currentConfig.storage, null, 2),
-        recommended_remediation: 'Remove anonymous read access (public_read: false) while preserving authenticated application and analyst access.',
-        security_impact: 'Unauthorized external threat actors can enumerate and download patient medical history without audit trail.'
+        security_impact: 'Anonymous users can download patient charts without authentication, violating HIPAA Security Rule.',
+        recommended_remediation: 'Set public_read to false and enforce authenticated role-based access for analyst/admin.'
       };
-    }
-
-    if (isGatewayAnonymous) {
-      return {
+    } else if (isGatewayAnonymous) {
+      finding = {
         id: 'FINDING-GATEWAY-01',
         resource: 'Apex Medical Patient Portal Gateway',
         vulnerability: 'Unauthenticated API Route Exposure',
@@ -300,12 +269,15 @@ class SandboxEnvironment {
         evidence: 'Perimeter gateway route /api/records has allow_anonymous=true. Anonymous requests retrieve patient diagnosis data.',
         affected_endpoint: '/api/records',
         current_configuration: JSON.stringify(recordsRoute, null, 2),
-        recommended_remediation: 'Enforce Bearer authorization. Require analyst or admin roles for records endpoint; preserve /health for public monitoring.',
-        security_impact: 'Anonymous users bypass identity perimeter and query protected patient records.'
+        security_impact: 'Anonymous callers bypass identity perimeter and query protected patient records.',
+        recommended_remediation: 'Enforce Bearer authorization. Require analyst or admin roles for records endpoint; preserve /health for public monitoring.'
       };
     }
 
-    return null;
+    if (finding) {
+      sqlite.saveFinding(finding);
+    }
+    return finding;
   }
 
   // Execute Dual Verification Probes against the current live configuration
@@ -465,6 +437,9 @@ class SandboxEnvironment {
       details: 'Least privilege RBAC properly enforced: Analyst cannot access Admin control plane (HTTP 403).'
     });
 
+    for (const r of results) {
+      sqlite.insertVerificationResult(r);
+    }
     return results;
   }
 

@@ -11,6 +11,10 @@ import { LiveTestConsole } from './components/LiveTestConsole';
 import { RunHistoryModal } from './components/RunHistoryModal';
 import { EvidenceModal } from './components/EvidenceModal';
 import { ExportAuditModal } from './components/ExportAuditModal';
+import { LiveTelemetryPanel } from './components/LiveTelemetryPanel';
+import { DatabaseExplorerModal } from './components/DatabaseExplorerModal';
+import { SandboxExplorerModal } from './components/SandboxExplorerModal';
+import { SyntheticRecordsModal } from './components/SyntheticRecordsModal';
 import {
   ReadinessResponse,
   StatusResponse,
@@ -26,6 +30,9 @@ export default function App() {
   const [historyOpen, setHistoryOpen] = useState<boolean>(false);
   const [evidenceOpen, setEvidenceOpen] = useState<boolean>(false);
   const [auditModalOpen, setAuditModalOpen] = useState<boolean>(false);
+  const [dbExplorerOpen, setDbExplorerOpen] = useState<boolean>(false);
+  const [sandboxExplorerOpen, setSandboxExplorerOpen] = useState<boolean>(false);
+  const [syntheticDataOpen, setSyntheticDataOpen] = useState<boolean>(false);
   const [loadingAction, setLoadingAction] = useState<boolean>(false);
 
   // Snapshot and Diff tracking
@@ -219,6 +226,9 @@ export default function App() {
         onRunDemoB={handleRunDemoB}
         onOpenHistory={() => setHistoryOpen(true)}
         onExportAudit={() => setAuditModalOpen(true)}
+        onOpenDbExplorer={() => setDbExplorerOpen(true)}
+        onOpenSandboxExplorer={() => setSandboxExplorerOpen(true)}
+        onOpenSyntheticData={() => setSyntheticDataOpen(true)}
         onSelectScenario={handleSelectScenario}
         disabled={loadingAction || isRunning}
       />
@@ -239,7 +249,14 @@ export default function App() {
           disabled={loadingAction}
         />
 
-        {/* 3. Main Operational Grid */}
+        {/* 3. Live Simulated Cloud Telemetry (SQLite Backed) */}
+        <LiveTelemetryPanel
+          onOpenDbExplorer={() => setDbExplorerOpen(true)}
+          onOpenSandboxExplorer={() => setSandboxExplorerOpen(true)}
+          onOpenSyntheticData={() => setSyntheticDataOpen(true)}
+        />
+
+        {/* 4. Main Operational Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
           {/* Left Column (Main Remediation Canvas, 7 Cols) */}
           <div className="lg:col-span-7 space-y-4">
@@ -314,6 +331,26 @@ export default function App() {
         status={status}
         latestRun={runs[0] || null}
         events={status?.recent_events || []}
+      />
+
+      {/* SQLite Database Explorer Modal */}
+      <DatabaseExplorerModal
+        isOpen={dbExplorerOpen}
+        onClose={() => setDbExplorerOpen(false)}
+      />
+
+      {/* Sandbox Configuration Explorer Modal */}
+      <SandboxExplorerModal
+        isOpen={sandboxExplorerOpen}
+        onClose={() => setSandboxExplorerOpen(false)}
+        config={status?.config_state || null}
+        status={status}
+      />
+
+      {/* Synthetic Healthcare Records Modal */}
+      <SyntheticRecordsModal
+        isOpen={syntheticDataOpen}
+        onClose={() => setSyntheticDataOpen(false)}
       />
     </div>
   );

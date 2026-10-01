@@ -10,7 +10,8 @@ import {
   AlertTriangle,
   Server,
   Layers,
-  FileCheck
+  FileCheck,
+  Database
 } from 'lucide-react';
 import { ReadinessResponse, SandboxConfig } from '../types';
 
@@ -22,6 +23,9 @@ interface HeaderProps {
   onRunDemoB: () => void;
   onOpenHistory: () => void;
   onExportAudit: () => void;
+  onOpenDbExplorer: () => void;
+  onOpenSandboxExplorer: () => void;
+  onOpenSyntheticData: () => void;
   onSelectScenario: (id: number) => void;
   disabled: boolean;
 }
@@ -34,6 +38,9 @@ export const Header: React.FC<HeaderProps> = ({
   onRunDemoB,
   onOpenHistory,
   onExportAudit,
+  onOpenDbExplorer,
+  onOpenSandboxExplorer,
+  onOpenSyntheticData,
   onSelectScenario,
   disabled
 }) => {
@@ -139,6 +146,16 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <History className="w-3.5 h-3.5 text-indigo-400" />
             <span className="hidden sm:inline">HISTORY</span>
+          </button>
+
+          {/* SQLite DB Explorer */}
+          <button
+            onClick={onOpenDbExplorer}
+            title="Inspect persistent SQLite tables, row counts, and sample records"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 text-xs font-mono transition"
+          >
+            <Database className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="hidden sm:inline">SQLITE</span>
           </button>
 
           {/* Export Audit Report */}

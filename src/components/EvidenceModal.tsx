@@ -1,6 +1,6 @@
 import React from 'react';
 import { X, ShieldAlert, Database, FileText, Lock, CheckCircle2 } from 'lucide-react';
-import { SYNTHETIC_PATIENT_RECORDS } from '../server/sandbox';
+import { SYNTHETIC_PATIENT_RECORDS } from '../constants';
 
 interface EvidenceModalProps {
   isOpen: boolean;
